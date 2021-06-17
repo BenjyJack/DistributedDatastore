@@ -4,6 +4,8 @@ package com.ds.datastore;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.http.HttpStatus;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -53,6 +55,7 @@ public class BookController {
                 })
                 .orElseThrow(() -> new BookNotFoundException(id));
     }
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     @DeleteMapping("/books/{id}")
     void deleteBook(@PathVariable Long id) {
         repository.deleteById(id);
