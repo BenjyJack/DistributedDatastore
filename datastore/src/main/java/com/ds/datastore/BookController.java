@@ -25,7 +25,7 @@ public class BookController {
         this.repository = repository;
         this.assembler = assembler;
     }
-
+    @ResponseStatus(HttpStatus.CREATED)
     @PostMapping("/books")
     protected Book newBook(@RequestBody Book book) {
         return repository.save(book);
