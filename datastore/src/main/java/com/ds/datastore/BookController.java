@@ -20,23 +20,23 @@ public class BookController {
 
     private final BookModelAssembler assembler;
 
-    BookController(BookRepository repository, BookModelAssembler assembler) {
+    public BookController(BookRepository repository, BookModelAssembler assembler) {
 
         this.repository = repository;
         this.assembler = assembler;
     }
 
     @PostMapping("/books")
-    Book newBook(@RequestBody Book book) {
+    protected Book newBook(@RequestBody Book book) {
         return repository.save(book);
     }
     @GetMapping("/books/{id}")
-    EntityModel<Book> one(@PathVariable Long id) {
+    protected EntityModel<Book> one(@PathVariable Long id) {
         Book book = repository.findById(id).orElseThrow(() -> new BookNotFoundException(id));
         return assembler.toModel(book);
     }
     @GetMapping("/books")
-    CollectionModel<EntityModel<Book>> all(){
+    protected CollectionModel<EntityModel<Book>> all(){
 
         List<EntityModel<Book>> books = repository.findAll().stream() //
                 .map(assembler::toModel) //
@@ -46,7 +46,7 @@ public class BookController {
     }
 
     @PutMapping("/books/{id}")
-    Book updatePrice(@RequestBody Book newBook, @PathVariable Long id) {
+    protected Book updatePrice(@RequestBody Book newBook, @PathVariable Long id) {
 
         return repository.findById(id)
                 .map(book -> {
@@ -57,26 +57,7 @@ public class BookController {
     }
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @DeleteMapping("/books/{id}")
-    void deleteBook(@PathVariable Long id) {
+    protected void deleteBook(@PathVariable Long id) {
         repository.deleteById(id);
     }
-
-
-
-//    public Book getBook(String serial)
-//    {
-//        return map.get(serial);
-//    }
-//
-//    public void changePrice(String serial, double price)
-//    {
-//        Book book = map.get(serial);
-//        book.setPrice(price);
-//    }
-//
-//    public void deleteBook(String serial)
-//    {
-//        map.remove(serial);
-//    }
-
 }
