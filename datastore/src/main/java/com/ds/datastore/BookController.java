@@ -46,11 +46,16 @@ public class BookController {
     }
 
     @PutMapping("/books/{id}")
-    protected Book updatePrice(@RequestBody Book newBook, @PathVariable Long id) {
+    protected Book updateBook(@RequestBody Book newBook, @PathVariable Long id) {
 
         return repository.findById(id)
                 .map(book -> {
-                    book.setPrice(newBook.getPrice());
+                    if(newBook.getAuthor() != null) book.setAuthor(newBook.getAuthor());
+                    if(newBook.getPrice() != 0)  book.setPrice(newBook.getPrice());
+                    if(newBook.getCategory() != null) book.setCategory(newBook.getCategory());
+                    if(newBook.getDescription() != null) book.setDescription(newBook.getDescription());
+                    if(newBook.getLanguage() != null) book.setLanguage(newBook.getLanguage());
+                    if(newBook.getTitle() != null) book.setTitle(newBook.getTitle());
                     return repository.save(book);
                 })
                 .orElseThrow(() -> new BookNotFoundException(id));
