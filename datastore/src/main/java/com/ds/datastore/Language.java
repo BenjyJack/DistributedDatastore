@@ -1,5 +1,5 @@
 package com.ds.datastore;
 
-public enum Lang {
+public enum Language {
     HEB, ENG, YID
 }

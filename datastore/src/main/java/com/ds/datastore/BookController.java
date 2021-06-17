@@ -3,12 +3,8 @@ package com.ds.datastore;
 
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
-import org.springframework.hateoas.IanaLinkRelations;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -16,13 +12,13 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @RestController
-public class Datastore {
+public class BookController {
 
     private final BookRepository repository;
 
     private final BookModelAssembler assembler;
 
-    Datastore(BookRepository repository, BookModelAssembler assembler) {
+    BookController(BookRepository repository, BookModelAssembler assembler) {
 
         this.repository = repository;
         this.assembler = assembler;
@@ -44,7 +40,7 @@ public class Datastore {
                 .map(assembler::toModel) //
                 .collect(Collectors.toList());
 
-        return CollectionModel.of(books, linkTo(methodOn(Datastore.class).all()).withSelfRel());
+        return CollectionModel.of(books, linkTo(methodOn(BookController.class).all()).withSelfRel());
     }
 
     @PutMapping("/books/{id}")
@@ -55,11 +51,7 @@ public class Datastore {
                     book.setPrice(newBook.getPrice());
                     return repository.save(book);
                 })
-                .orElseGet(() -> {
-                    newBook.setId(id);
-                    return repository.save(newBook);
-                    //TODO no book data given???
-                });
+                .orElseThrow(() -> new BookNotFoundException(id));
     }
     @DeleteMapping("/books/{id}")
     void deleteBook(@PathVariable Long id) {
