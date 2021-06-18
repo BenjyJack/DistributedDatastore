@@ -8,10 +8,12 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 
 @ControllerAdvice
 public class BookNotFoundAdvice {
+
     @ResponseBody
     @ExceptionHandler(BookNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     protected String bookNotFoundHandler(BookNotFoundException ex){
         return ex.getMessage();
     }
+
 }

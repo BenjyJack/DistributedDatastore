@@ -1,19 +1,17 @@
 package com.ds.datastore;
 
-import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
+
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.IanaLinkRelations;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.stream.Collectors;
-
-import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
-import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @RestController
 public class BookController {
@@ -23,7 +21,6 @@ public class BookController {
     private final BookModelAssembler assembler;
 
     public BookController(BookRepository repository, BookModelAssembler assembler) {
-
         this.repository = repository;
         this.assembler = assembler;
     }
@@ -31,9 +28,8 @@ public class BookController {
     @PostMapping("/books")
     protected ResponseEntity<EntityModel<Book>> newBook(@RequestBody Book book){
         EntityModel<Book> entityModel = assembler.toModel(repository.save(book));
-
-        return ResponseEntity //
-                .created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri()) //
+        return ResponseEntity
+                .created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
                 .body(entityModel);
     }
     
@@ -42,19 +38,17 @@ public class BookController {
         Book book = repository.findById(id).orElseThrow(() -> new BookNotFoundException(id));
         return assembler.toModel(book);
     }
+
     @GetMapping("/books")
     protected CollectionModel<EntityModel<Book>> all(){
-
-        List<EntityModel<Book>> books = repository.findAll().stream() //
-                .map(assembler::toModel) //
+        List<EntityModel<Book>> books = repository.findAll().stream()
+                .map(assembler::toModel)
                 .collect(Collectors.toList());
-
         return CollectionModel.of(books, linkTo(methodOn(BookController.class).all()).withSelfRel());
     }
 
     @PutMapping("/books/{id}")
     protected Book updateBook(@RequestBody Book newBook, @PathVariable Long id) {
-
         return repository.findById(id)
                 .map(book -> {
                     if(newBook.getAuthor() != null) book.setAuthor(newBook.getAuthor());
@@ -67,11 +61,12 @@ public class BookController {
                 })
                 .orElseThrow(() -> new BookNotFoundException(id));
     }
+
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @DeleteMapping("/books/{id}")
     protected void deleteBook(@PathVariable Long id) {
         repository.findById(id).orElseThrow(() -> new BookNotFoundException(id));
         repository.deleteById(id);
-
     }
+
 }
