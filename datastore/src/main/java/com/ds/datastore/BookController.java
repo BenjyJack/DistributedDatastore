@@ -58,7 +58,7 @@ public class BookController {
         return repository.findById(id)
                 .map(book -> {
                     if(newBook.getAuthor() != null) book.setAuthor(newBook.getAuthor());
-                    if(newBook.getPrice() != 0)  book.setPrice(newBook.getPrice());
+                    if(newBook.getPrice() != -1)  book.setPrice(newBook.getPrice());
                     if(newBook.getCategory() != null) book.setCategory(newBook.getCategory());
                     if(newBook.getDescription() != null) book.setDescription(newBook.getDescription());
                     if(newBook.getLanguage() != null) book.setLanguage(newBook.getLanguage());

@@ -11,7 +11,7 @@ public class Book {
     private String author;
     private String category;
     private String title;
-    private double price;
+    private double price =-1;
     private String description;
     private Language language;
 
