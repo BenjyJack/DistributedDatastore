@@ -1,8 +1,10 @@
 package com.ds.datastore;
 
-
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.IanaLinkRelations;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.http.HttpStatus;
@@ -25,11 +27,16 @@ public class BookController {
         this.repository = repository;
         this.assembler = assembler;
     }
-    @ResponseStatus(HttpStatus.CREATED)
+
     @PostMapping("/books")
-    protected Book newBook(@RequestBody Book book) {
-        return repository.save(book);
+    protected ResponseEntity<EntityModel<Book>> newBook(@RequestBody Book book){
+        EntityModel<Book> entityModel = assembler.toModel(repository.save(book));
+
+        return ResponseEntity //
+                .created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri()) //
+                .body(entityModel);
     }
+    
     @GetMapping("/books/{id}")
     protected EntityModel<Book> one(@PathVariable Long id) {
         Book book = repository.findById(id).orElseThrow(() -> new BookNotFoundException(id));
