@@ -10,10 +10,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
-
-import javax.persistence.EntityManager;
-import javax.persistence.EntityManagerFactory;
-import javax.persistence.Persistence;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -21,10 +17,7 @@ import java.util.stream.Collectors;
 public class BookController {
 
     private final BookRepository repository;
-
     private final BookModelAssembler assembler;
-
-
 
     public BookController(BookRepository repository, BookModelAssembler assembler) {
         this.repository = repository;
@@ -42,10 +35,7 @@ public class BookController {
     @GetMapping("books/{id}")
     protected EntityModel<Book> one(@PathVariable Long id) {
         Book book = repository.findById(id).orElseThrow(() -> new BookNotFoundException(id));
-
-
         return assembler.toModel(book);
-
     }
 
     @GetMapping("/{store_id}/books")
@@ -74,6 +64,7 @@ public class BookController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @DeleteMapping("/{store_id}/books/{id}")
     protected void deleteBook(@PathVariable Long id, @PathVariable Long store_id) {
+        //TODO: do we need the store_id passed as a parameter?
         repository.findById(id).orElseThrow(() -> new BookNotFoundException(id));
         repository.deleteById(id);
     }

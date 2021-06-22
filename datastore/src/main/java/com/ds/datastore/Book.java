@@ -13,10 +13,6 @@ public class Book {
     private String description;
     private Language language;
 
-
-
-
-
     public Book() {}
 
     public String getAuthor() {
