@@ -10,6 +10,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+
+import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.Persistence;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -19,6 +23,8 @@ public class BookController {
     private final BookRepository repository;
 
     private final BookModelAssembler assembler;
+
+
 
     public BookController(BookRepository repository, BookModelAssembler assembler) {
         this.repository = repository;
@@ -35,8 +41,17 @@ public class BookController {
     
     @GetMapping("/books/{id}")
     protected EntityModel<Book> one(@PathVariable Long id) {
-        Book book = repository.findById(id).orElseThrow(() -> new BookNotFoundException(id));
+        //Book book = repository.findById(id).orElseThrow(() -> new BookNotFoundException(id));
+
+        EntityManagerFactory entityManagerFactory =  Persistence.createEntityManagerFactory("BOOKSTORE_JPA");
+        EntityManager em = entityManagerFactory.createEntityManager();
+
+        Book book = em.find(Book.class, id);
+        em.close();
+        entityManagerFactory.close();
+
         return assembler.toModel(book);
+
     }
 
     @GetMapping("/books")

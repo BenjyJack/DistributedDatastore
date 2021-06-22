@@ -1,8 +1,6 @@
 package com.ds.datastore;
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
+import javax.persistence.*;
 
 @Entity
 public class Book {
@@ -14,6 +12,11 @@ public class Book {
     private double price = -1;
     private String description;
     private Language language;
+
+
+
+
+    private BookStore store;
 
     public Book() {}
 
@@ -64,6 +67,14 @@ public class Book {
     }
     public Long getId() {
         return id;
+    }
+
+    public BookStore getStore() {
+        return store;
+    }
+
+    public void setStore(BookStore store) {
+        this.store = store;
     }
 
 }
