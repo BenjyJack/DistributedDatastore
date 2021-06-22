@@ -5,19 +5,19 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
-@Entity (name = "BOOKSTORE")
+@Entity
 public class BookStore {
 
     @Id
-    @Column(name = "STORE_ID", nullable = false)
+    @Column(name = "id", nullable = false)
     @GeneratedValue( strategy=GenerationType.AUTO )
     private long id;
 
-    @Column(name = "STORE_NAME", length = 50)
+    @Column(name = "name", length = 50)
     private String name;
 
-    @OneToMany(targetEntity=Book.class, mappedBy="store", fetch=FetchType.EAGER)
-    @Column(name = "INVENTORY")
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "store_id")
     Set<Book> books = new HashSet<>();
 
     public long getId() {
@@ -34,6 +34,11 @@ public class BookStore {
 
     public void setName( String storeName ){
         this.name = storeName;
+    }
+
+    public void addBook(Book book)
+    {
+        books.add(book);
     }
 
 }

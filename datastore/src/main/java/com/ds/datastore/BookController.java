@@ -39,22 +39,16 @@ public class BookController {
                 .body(entityModel);
     }
     
-    @GetMapping("/books/{id}")
+    @GetMapping("books/{id}")
     protected EntityModel<Book> one(@PathVariable Long id) {
-        //Book book = repository.findById(id).orElseThrow(() -> new BookNotFoundException(id));
+        Book book = repository.findById(id).orElseThrow(() -> new BookNotFoundException(id));
 
-        EntityManagerFactory entityManagerFactory =  Persistence.createEntityManagerFactory("BOOKSTORE_JPA");
-        EntityManager em = entityManagerFactory.createEntityManager();
-
-        Book book = em.find(Book.class, id);
-        em.close();
-        entityManagerFactory.close();
 
         return assembler.toModel(book);
 
     }
 
-    @GetMapping("/books")
+    @GetMapping("/{store_id}/books")
     protected CollectionModel<EntityModel<Book>> all(){
         List<EntityModel<Book>> books = repository.findAll().stream()
                 .map(assembler::toModel)
@@ -62,7 +56,7 @@ public class BookController {
         return CollectionModel.of(books, linkTo(methodOn(BookController.class).all()).withSelfRel());
     }
 
-    @PutMapping("/books/{id}")
+    @PutMapping("/{store_id}/books/{id}")
     protected Book updateBook(@RequestBody Book newBook, @PathVariable Long id) {
         return repository.findById(id)
                 .map(book -> {
@@ -78,8 +72,8 @@ public class BookController {
     }
 
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @DeleteMapping("/books/{id}")
-    protected void deleteBook(@PathVariable Long id) {
+    @DeleteMapping("/{store_id}/books/{id}")
+    protected void deleteBook(@PathVariable Long id, @PathVariable Long store_id) {
         repository.findById(id).orElseThrow(() -> new BookNotFoundException(id));
         repository.deleteById(id);
     }

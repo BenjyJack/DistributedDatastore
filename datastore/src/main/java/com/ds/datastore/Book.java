@@ -16,7 +16,6 @@ public class Book {
 
 
 
-    private BookStore store;
 
     public Book() {}
 
@@ -69,12 +68,5 @@ public class Book {
         return id;
     }
 
-    public BookStore getStore() {
-        return store;
-    }
-
-    public void setStore(BookStore store) {
-        this.store = store;
-    }
 
 }

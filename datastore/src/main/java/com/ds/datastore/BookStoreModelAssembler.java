@@ -13,8 +13,8 @@ public class BookStoreModelAssembler implements RepresentationModelAssembler<Boo
     @Override
     public EntityModel<BookStore> toModel(BookStore bookStore) {
         return EntityModel.of(bookStore,
-                linkTo(methodOn(BookController.class).one(bookStore.getId())).withSelfRel(),
-                linkTo(methodOn(BookController.class).all()).withRel("books"));
+                linkTo(methodOn(BookStoreController.class).one(bookStore.getId())).withSelfRel(),
+                linkTo(methodOn(BookStoreController.class).all()).withRel("books"));
     }
 
 
