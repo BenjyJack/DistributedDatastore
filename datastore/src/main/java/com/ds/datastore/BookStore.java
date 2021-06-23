@@ -1,9 +1,7 @@
 package com.ds.datastore;
 
 import javax.persistence.*;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 @Entity
 public class BookStore {
@@ -16,9 +14,11 @@ public class BookStore {
     @Column(name = "name", length = 50)
     private String name;
 
+
+
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "store_id")
-    Set<Book> books = new HashSet<>();
+    List<Book> books = new ArrayList<>();
 
     public long getId() {
         return id;
@@ -36,9 +36,11 @@ public class BookStore {
         this.name = storeName;
     }
 
-    public void addBook(Book book)
-    {
-        books.add(book);
+    public List<Book> getBooks() {
+        return books;
     }
+
+
+
 
 }

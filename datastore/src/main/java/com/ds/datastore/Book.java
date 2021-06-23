@@ -13,9 +13,15 @@ public class Book {
     private String description;
     private Language language;
 
+    public Long getStore_id() {
+        return store_id;
+    }
 
+    public void setStore_id(Long store_id) {
+        this.store_id = store_id;
+    }
 
-
+    private Long store_id;
 
     public Book() {}
 
