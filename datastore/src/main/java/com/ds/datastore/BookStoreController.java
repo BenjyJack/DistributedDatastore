@@ -45,9 +45,9 @@ public class BookStoreController {
     }
     */
 
-    @GetMapping("/bookstores/{store_id}")
-    protected EntityModel<BookStore> one(@PathVariable Long store_id) {
-        BookStore bookStore = repository.findById(store_id).orElseThrow(() -> new BookStoreNotFoundException(store_id));
+    @GetMapping("/bookstores/{storeID}")
+    protected EntityModel<BookStore> one(@PathVariable Long storeID) {
+        BookStore bookStore = repository.findById(storeID).orElseThrow(() -> new BookStoreNotFoundException(storeID));
         return assembler.toModel(bookStore);
     }
 
@@ -60,21 +60,21 @@ public class BookStoreController {
         return CollectionModel.of(bookStores, linkTo(methodOn(BookStoreController.class).all()).withSelfRel());
     }
 
-    @PutMapping("/bookstores/{store_id}")
-    protected BookStore updateBookStore(@RequestBody BookStore newBookStore, @PathVariable Long store_id) {
-        return repository.findById(store_id)
+    @PutMapping("/bookstores/{storeID}")
+    protected BookStore updateBookStore(@RequestBody BookStore newBookStore, @PathVariable Long storeID) {
+        return repository.findById(storeID)
                 .map(bookStore -> {
                     //TODO: add more stuff here
                     return repository.save(bookStore);
                 })
-                .orElseThrow(() -> new BookStoreNotFoundException(store_id));
+                .orElseThrow(() -> new BookStoreNotFoundException(storeID));
     }
 
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @DeleteMapping("/bookstores/{store_id}")
-    protected void deleteBookStore(@PathVariable Long store_id) {
-        repository.findById(store_id).orElseThrow(() -> new BookStoreNotFoundException(store_id));
-        repository.deleteById(store_id);
+    @DeleteMapping("/bookstores/{storeID}")
+    protected void deleteBookStore(@PathVariable Long storeID) {
+        repository.findById(storeID).orElseThrow(() -> new BookStoreNotFoundException(storeID));
+        repository.deleteById(storeID);
     }
 
 }

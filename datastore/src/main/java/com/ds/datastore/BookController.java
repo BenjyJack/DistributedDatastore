@@ -24,9 +24,9 @@ public class BookController {
         this.assembler = assembler;
     }
 
-    @PostMapping("/bookstores/{store_id}/books")
-    protected ResponseEntity<EntityModel<Book>> newBook(@RequestBody Book book, @PathVariable Long store_id){
-        book.setStoreId(store_id);
+    @PostMapping("/bookstores/{storeID}/books")
+    protected ResponseEntity<EntityModel<Book>> newBook(@RequestBody Book book, @PathVariable Long storeID){
+        book.setStoreID(storeID);
         EntityModel<Book> entityModel = assembler.toModel(repository.save(book));
 
         return ResponseEntity
@@ -34,28 +34,25 @@ public class BookController {
                 .body(entityModel);
     }
 
-    @GetMapping("/bookstores/{store_id}/books/{id}")
-    protected EntityModel<Book> one(@PathVariable Long id, @PathVariable Long store_id) {
+    @GetMapping("/bookstores/{storeID}/books/{id}")
+    protected EntityModel<Book> one(@PathVariable Long id, @PathVariable Long storeID) {
         Book book = repository.findById(id).orElseThrow(() -> new BookNotFoundException(id));
 
         return assembler.toModel(book);
 
     }
 
-    @GetMapping("/bookstores/{store_id}/books")
-    protected CollectionModel<EntityModel<Book>> all(@PathVariable long store_id){
-        List<Book> books = repository.findAll();
-        books.removeIf(book -> book.getStoreId() == null || book.getStoreId() != store_id);
-
-        List<EntityModel<Book>> booksAll = books
+    @GetMapping("/bookstores/{storeID}/books")
+    protected CollectionModel<EntityModel<Book>> all(@PathVariable long storeID){
+        List<EntityModel<Book>> booksAll = repository.findByStoreID(storeID)
                 .stream()
                 .map(assembler::toModel)
                 .collect(Collectors.toList());
-        return CollectionModel.of(booksAll, linkTo(methodOn(BookController.class).all(store_id)).withSelfRel());
+        return CollectionModel.of(booksAll, linkTo(methodOn(BookController.class).all(storeID)).withSelfRel());
     }
 
-    @PutMapping("/bookstores/{store_id}/books/{id}")
-    protected Book updateBook(@RequestBody Book newBook, @PathVariable Long id, @PathVariable Long store_id) {
+    @PutMapping("/bookstores/{storeID}/books/{id}")
+    protected Book updateBook(@RequestBody Book newBook, @PathVariable Long id, @PathVariable Long storeID) {
         return repository.findById(id)
                 .map(book -> {
                     if(newBook.getAuthor() != null) book.setAuthor(newBook.getAuthor());
@@ -70,8 +67,8 @@ public class BookController {
     }
 
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @DeleteMapping("/bookstores/{store_id}/books/{id}")
-    protected void deleteBook(@PathVariable Long id, @PathVariable Long store_id) {
+    @DeleteMapping("/bookstores/{storeID}/books/{id}")
+    protected void deleteBook(@PathVariable Long id, @PathVariable Long storeID) {
         repository.findById(id).orElseThrow(() -> new BookNotFoundException(id));
         repository.deleteById(id);
     }

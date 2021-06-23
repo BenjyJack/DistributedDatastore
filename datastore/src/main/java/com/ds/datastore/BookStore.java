@@ -16,7 +16,7 @@ public class BookStore {
     private String name;
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "store_id")
+    @JoinColumn(name = "storeID")
     List<Book> books = new ArrayList<>();
 
     public long getId() {
