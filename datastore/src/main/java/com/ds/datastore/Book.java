@@ -13,15 +13,25 @@ public class Book {
     private String description;
     private Language language;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    private BookStore store;
     private Long storeID;
 
     public Book() {}
 
+    public void setStoreID(Long storeID) {
+        this.storeID = storeID;
+    }
     public Long getStoreID() {
         return storeID;
     }
-    public void setStoreID(Long storeID) {
-        this.storeID = storeID;
+
+    public BookStore getStore() {
+        return store;
+    }
+    public void setStore(BookStore store) {
+        this.store = store;
+        this.storeID = store.getId();
     }
 
     public String getAuthor() {

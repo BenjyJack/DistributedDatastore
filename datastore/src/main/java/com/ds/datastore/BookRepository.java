@@ -6,6 +6,6 @@ import java.util.List;
 
 interface BookRepository extends JpaRepository<Book, Long> {
 
-    List<Book> findByStoreID(long storeID);
+    List<Book> findByStoreID(Long storeID);
 
 }

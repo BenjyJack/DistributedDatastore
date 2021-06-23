@@ -15,8 +15,8 @@ public class BookStore {
     @Column(name = "name", length = 50)
     private String name;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "storeID")
+    @OneToMany(mappedBy = "store", cascade = CascadeType.ALL, orphanRemoval = true)
+    //@JoinColumn(name = "storeID")
     List<Book> books = new ArrayList<>();
 
     public long getId() {

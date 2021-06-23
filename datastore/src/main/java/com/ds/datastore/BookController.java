@@ -18,14 +18,17 @@ public class BookController {
 
     private final BookRepository repository;
     private final BookModelAssembler assembler;
+    private final BookStoreRepository storeRepository;
 
-    public BookController(BookRepository repository, BookModelAssembler assembler) {
+    public BookController(BookRepository repository, BookModelAssembler assembler, BookStoreRepository storeRepository) {
         this.repository = repository;
         this.assembler = assembler;
+        this.storeRepository = storeRepository;
     }
 
     @PostMapping("/bookstores/{storeID}/books")
     protected ResponseEntity<EntityModel<Book>> newBook(@RequestBody Book book, @PathVariable Long storeID){
+        BookStore store = storeRepository.getById(storeID);
         book.setStoreID(storeID);
         EntityModel<Book> entityModel = assembler.toModel(repository.save(book));
 
@@ -43,7 +46,7 @@ public class BookController {
     }
 
     @GetMapping("/bookstores/{storeID}/books")
-    protected CollectionModel<EntityModel<Book>> all(@PathVariable long storeID){
+    protected CollectionModel<EntityModel<Book>> all(@PathVariable Long storeID){
         List<EntityModel<Book>> booksAll = repository.findByStoreID(storeID)
                 .stream()
                 .map(assembler::toModel)
