@@ -10,10 +10,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
-
-import javax.persistence.EntityManager;
-import javax.persistence.EntityManagerFactory;
-import javax.persistence.Persistence;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -21,10 +17,7 @@ import java.util.stream.Collectors;
 public class BookController {
 
     private final BookRepository repository;
-
     private final BookModelAssembler assembler;
-
-
 
     public BookController(BookRepository repository, BookModelAssembler assembler) {
         this.repository = repository;
@@ -33,7 +26,7 @@ public class BookController {
 
     @PostMapping("/bookstores/{store_id}/books")
     protected ResponseEntity<EntityModel<Book>> newBook(@RequestBody Book book, @PathVariable Long store_id){
-        book.setStore_id(store_id);
+        book.setStoreId(store_id);
         EntityModel<Book> entityModel = assembler.toModel(repository.save(book));
 
         return ResponseEntity
@@ -52,7 +45,7 @@ public class BookController {
     @GetMapping("/bookstores/{store_id}/books")
     protected CollectionModel<EntityModel<Book>> all(@PathVariable long store_id){
         List<Book> books = repository.findAll();
-        books.removeIf(book -> book.getStore_id() == null || book.getStore_id() != store_id);
+        books.removeIf(book -> book.getStoreId() == null || book.getStoreId() != store_id);
 
         List<EntityModel<Book>> booksAll = books
                 .stream()

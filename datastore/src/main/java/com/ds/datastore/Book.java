@@ -13,17 +13,16 @@ public class Book {
     private String description;
     private Language language;
 
-    public Long getStore_id() {
-        return store_id;
-    }
-
-    public void setStore_id(Long store_id) {
-        this.store_id = store_id;
-    }
-
     private Long store_id;
 
     public Book() {}
+
+    public Long getStoreId() {
+        return store_id;
+    }
+    public void setStoreId(Long store_id) {
+        this.store_id = store_id;
+    }
 
     public String getAuthor() {
         return author;
@@ -73,6 +72,5 @@ public class Book {
     public Long getId() {
         return id;
     }
-
 
 }
