@@ -10,6 +10,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+
+import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.Persistence;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -17,37 +21,48 @@ import java.util.stream.Collectors;
 public class BookController {
 
     private final BookRepository repository;
+
     private final BookModelAssembler assembler;
+
+
 
     public BookController(BookRepository repository, BookModelAssembler assembler) {
         this.repository = repository;
         this.assembler = assembler;
     }
 
-    @PostMapping("/books")
-    protected ResponseEntity<EntityModel<Book>> newBook(@RequestBody Book book){
+    @PostMapping("/bookstores/{store_id}/books")
+    protected ResponseEntity<EntityModel<Book>> newBook(@RequestBody Book book, @PathVariable Long store_id){
+        book.setStore_id(store_id);
         EntityModel<Book> entityModel = assembler.toModel(repository.save(book));
+
         return ResponseEntity
                 .created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
                 .body(entityModel);
     }
-    
-    @GetMapping("books/{id}")
-    protected EntityModel<Book> one(@PathVariable Long id) {
+
+    @GetMapping("/bookstores/{store_id}/books/{id}")
+    protected EntityModel<Book> one(@PathVariable Long id, @PathVariable Long store_id) {
         Book book = repository.findById(id).orElseThrow(() -> new BookNotFoundException(id));
+
         return assembler.toModel(book);
+
     }
 
-    @GetMapping("/{store_id}/books")
-    protected CollectionModel<EntityModel<Book>> all(){
-        List<EntityModel<Book>> books = repository.findAll().stream()
+    @GetMapping("/bookstores/{store_id}/books")
+    protected CollectionModel<EntityModel<Book>> all(@PathVariable long store_id){
+        List<Book> books = repository.findAll();
+        books.removeIf(book -> book.getStore_id() == null || book.getStore_id() != store_id);
+
+        List<EntityModel<Book>> booksAll = books
+                .stream()
                 .map(assembler::toModel)
                 .collect(Collectors.toList());
-        return CollectionModel.of(books, linkTo(methodOn(BookController.class).all()).withSelfRel());
+        return CollectionModel.of(booksAll, linkTo(methodOn(BookController.class).all(store_id)).withSelfRel());
     }
 
-    @PutMapping("/{store_id}/books/{id}")
-    protected Book updateBook(@RequestBody Book newBook, @PathVariable Long id) {
+    @PutMapping("/bookstores/{store_id}/books/{id}")
+    protected Book updateBook(@RequestBody Book newBook, @PathVariable Long id, @PathVariable Long store_id) {
         return repository.findById(id)
                 .map(book -> {
                     if(newBook.getAuthor() != null) book.setAuthor(newBook.getAuthor());
@@ -62,9 +77,8 @@ public class BookController {
     }
 
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @DeleteMapping("/{store_id}/books/{id}")
+    @DeleteMapping("/bookstores/{store_id}/books/{id}")
     protected void deleteBook(@PathVariable Long id, @PathVariable Long store_id) {
-        //TODO: do we need the store_id passed as a parameter?
         repository.findById(id).orElseThrow(() -> new BookNotFoundException(id));
         repository.deleteById(id);
     }
