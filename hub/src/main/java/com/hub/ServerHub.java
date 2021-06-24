@@ -14,4 +14,7 @@ public class ServerHub {
     public String getAddress(Long id){
         return serverToHTTP.get(id);
     }
+    public HashMap<Long, String> getMap(){
+        return this.serverToHTTP;
+    }
 }

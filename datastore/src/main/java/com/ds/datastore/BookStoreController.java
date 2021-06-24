@@ -10,8 +10,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import com.google.gson.Gson;
 
 @RestController
 public class BookStoreController {
@@ -19,11 +22,13 @@ public class BookStoreController {
     private final BookStoreRepository repository;
     private final BookStoreModelAssembler assembler;
     private final BookRepository bookRepository;
+    private HashMap<Long,String> serverMap;
 
     public BookStoreController(BookStoreRepository repository, BookStoreModelAssembler assembler, BookRepository bookRepository) {
         this.repository = repository;
         this.assembler = assembler;
         this.bookRepository = bookRepository;
+        this.serverMap = new HashMap<>();
     }
 
     @PostMapping("/bookstores")
@@ -34,6 +39,22 @@ public class BookStoreController {
                 .created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
                 .body(entityModel);
     }
+
+    //TODO Clean Up these three methods
+    @PostMapping("/bookstores/{id}")
+    protected void addServer(Long storeID, String address){
+        this.serverMap.put(storeID, address);
+    }
+
+    @PostMapping("/bookstores/{id}")
+    protected void setMap(@RequestBody String map)
+    {
+        Gson gson = new Gson();
+        this.serverMap = (HashMap<Long,String>)gson.fromJson(map, HashMap.class);
+    }
+
+
+
 
 
     @GetMapping("/bookstores/{storeID}")
@@ -50,6 +71,16 @@ public class BookStoreController {
                 .collect(Collectors.toList());
         return CollectionModel.of(bookStores, linkTo(methodOn(BookStoreController.class).all()).withSelfRel());
     }
+
+    @GetMapping("")
+
+
+
+
+
+
+
+
 
     @PutMapping("/bookstores/{storeID}")
     protected BookStore updateBookStore(@RequestBody BookStore newBookStore, @PathVariable Long storeID) {
