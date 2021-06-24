@@ -28,7 +28,7 @@ public class BookController {
 
     @PostMapping("/bookstores/{storeID}/books")
     protected ResponseEntity<EntityModel<Book>> newBook(@RequestBody Book book, @PathVariable Long storeID){
-        BookStore store = storeRepository.getById(storeID);
+        BookStore store = checkStore(storeID);
         book.setStoreID(storeID);
         book.setStore(store);
         EntityModel<Book> entityModel = assembler.toModel(repository.save(book));
@@ -40,15 +40,14 @@ public class BookController {
 
     @GetMapping("/bookstores/{storeID}/books/{id}")
     protected EntityModel<Book> one(@PathVariable Long id, @PathVariable Long storeID) {
-        Book book = repository.findById(id).orElseThrow(() -> new BookNotFoundException(id));
-
-
+        checkStore(storeID);
+        Book book = checkBook(id, storeID);
         return assembler.toModel(book);
-
     }
 
     @GetMapping("/bookstores/{storeID}/books")
     protected CollectionModel<EntityModel<Book>> all(@PathVariable Long storeID){
+        checkStore(storeID);
         List<EntityModel<Book>> booksAll = repository.findByStoreID(storeID)
                 .stream()
                 .map(assembler::toModel)
@@ -58,7 +57,8 @@ public class BookController {
 
     @PutMapping("/bookstores/{storeID}/books/{id}")
     protected Book updateBook(@RequestBody Book newBook, @PathVariable Long id, @PathVariable Long storeID) {
-        return repository.findById(id)
+        checkStore(storeID);
+        Book updatedBook = repository.findById(id)
                 .map(book -> {
                     if(newBook.getAuthor() != null) book.setAuthor(newBook.getAuthor());
                     if(newBook.getPrice() != -1)  book.setPrice(newBook.getPrice());
@@ -69,13 +69,26 @@ public class BookController {
                     return repository.save(book);
                 })
                 .orElseThrow(() -> new BookNotFoundException(id));
+        if(!updatedBook.getStoreID().equals(storeID))  throw new BookNotFoundException(id);
+        return updatedBook;
     }
 
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @DeleteMapping("/bookstores/{storeID}/books/{id}")
     protected void deleteBook(@PathVariable Long id, @PathVariable Long storeID) {
-        repository.findById(id).orElseThrow(() -> new BookNotFoundException(id));
+        checkStore(storeID);
+        checkBook(id, storeID);
         repository.deleteById(id);
+    }
+
+    private BookStore checkStore(Long storeID){
+        return storeRepository.findById(storeID).orElseThrow(() -> new BookStoreNotFoundException(storeID));
+    }
+
+    private Book checkBook(Long id, Long storeID) {
+        Book book = repository.findById(id).orElseThrow(() -> new BookNotFoundException(id));
+        if(!book.getStoreID().equals(storeID))  throw new BookNotFoundException(id);
+        return book;
     }
 
 }
