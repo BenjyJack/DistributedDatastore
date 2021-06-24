@@ -14,6 +14,9 @@ public class BookStore {
 
     @Column(name = "name", length = 50)
     private String name;
+    @Column (name = "Phone", length = 10)
+    private String phone;
+    private String address;
 
     @OneToMany(mappedBy = "store", cascade = CascadeType.ALL, orphanRemoval = true)
     List<Book> books = new ArrayList<>();
@@ -36,4 +39,19 @@ public class BookStore {
         return books;
     }
 
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
 }

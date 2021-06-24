@@ -18,10 +18,12 @@ public class BookStoreController {
 
     private final BookStoreRepository repository;
     private final BookStoreModelAssembler assembler;
+    private final BookRepository bookRepository;
 
-    public BookStoreController(BookStoreRepository repository, BookStoreModelAssembler assembler) {
+    public BookStoreController(BookStoreRepository repository, BookStoreModelAssembler assembler, BookRepository bookRepository) {
         this.repository = repository;
         this.assembler = assembler;
+        this.bookRepository = bookRepository;
     }
 
     @PostMapping("/bookstores")
@@ -33,17 +35,6 @@ public class BookStoreController {
                 .body(entityModel);
     }
 
-   /* @PostMapping("/bookstores/{store_id}/books")
-    protected ResponseEntity<EntityModel<Book>> newBook(@RequestBody Book book, @PathVariable Long store_id){
-        BookStore bookStore = repository.findById(store_id).orElseThrow();
-        BookModelAssembler bookModelAssembler = new BookModelAssembler();
-        EntityModel<Book> entityModel = bookModelAssembler.toModel(book);
-        bookStore.addBook(book);
-        return ResponseEntity
-                .created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
-                .body(entityModel);
-    }
-    */
 
     @GetMapping("/bookstores/{storeID}")
     protected EntityModel<BookStore> one(@PathVariable Long storeID) {
@@ -64,7 +55,9 @@ public class BookStoreController {
     protected BookStore updateBookStore(@RequestBody BookStore newBookStore, @PathVariable Long storeID) {
         return repository.findById(storeID)
                 .map(bookStore -> {
-                    //TODO: add more stuff here
+                    if(newBookStore.getName() != null) bookStore.setName(newBookStore.getName());
+                    if(newBookStore.getPhone() != null) bookStore.setPhone(newBookStore.getPhone());
+                    if(newBookStore.getAddress() != null) bookStore.setAddress(newBookStore.getAddress());
                     return repository.save(bookStore);
                 })
                 .orElseThrow(() -> new BookStoreNotFoundException(storeID));
@@ -75,6 +68,10 @@ public class BookStoreController {
     protected void deleteBookStore(@PathVariable Long storeID) {
         repository.findById(storeID).orElseThrow(() -> new BookStoreNotFoundException(storeID));
         repository.deleteById(storeID);
+        List<Book> books = bookRepository.findByStoreID(storeID);
+        for (Book book : books) {
+            bookRepository.delete(book);
+        }
     }
 
 }
