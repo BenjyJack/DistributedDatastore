@@ -30,6 +30,7 @@ public class BookController {
     protected ResponseEntity<EntityModel<Book>> newBook(@RequestBody Book book, @PathVariable Long storeID){
         BookStore store = storeRepository.getById(storeID);
         book.setStoreID(storeID);
+        book.setStore(store);
         EntityModel<Book> entityModel = assembler.toModel(repository.save(book));
 
         return ResponseEntity
