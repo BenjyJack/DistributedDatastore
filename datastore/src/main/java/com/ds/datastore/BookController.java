@@ -42,6 +42,7 @@ public class BookController {
     protected EntityModel<Book> one(@PathVariable Long id, @PathVariable Long storeID) {
         Book book = repository.findById(id).orElseThrow(() -> new BookNotFoundException(id));
 
+
         return assembler.toModel(book);
 
     }
