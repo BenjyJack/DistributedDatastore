@@ -1,9 +1,9 @@
 package com.ds.datastore;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
 
-import javax.persistence.*;
-@JsonIgnoreProperties(value = {"store"})
 @Entity
 public class Book {
 
@@ -15,26 +15,7 @@ public class Book {
     private String description;
     private Language language;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    private BookStore store;
-    private Long storeID;
-
     public Book() {}
-
-    public void setStoreID(Long storeID) {
-        this.storeID = storeID;
-    }
-    public Long getStoreID() {
-        return storeID;
-    }
-
-    public BookStore getStore() {
-        return store;
-    }
-    public void setStore(BookStore store) {
-        this.store = store;
-        this.storeID = store.getId();
-    }
 
     public String getAuthor() {
         return author;
