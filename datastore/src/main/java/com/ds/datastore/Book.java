@@ -1,8 +1,8 @@
 package com.ds.datastore;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-
 import javax.persistence.*;
+
 @JsonIgnoreProperties(value = {"store"})
 @Entity
 public class Book {
@@ -16,6 +16,7 @@ public class Book {
     private Language language;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "books")
     private BookStore store;
     private Long storeID;
 
