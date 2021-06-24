@@ -17,46 +17,38 @@ import java.util.stream.Collectors;
 public class BookController {
 
     private final BookRepository repository;
-    private final BookModelAssembler assembler;
-    private final BookStoreRepository storeRepository;
 
-    public BookController(BookRepository repository, BookModelAssembler assembler, BookStoreRepository storeRepository) {
+    private final BookModelAssembler assembler;
+
+    public BookController(BookRepository repository, BookModelAssembler assembler) {
         this.repository = repository;
         this.assembler = assembler;
-        this.storeRepository = storeRepository;
     }
 
-    @PostMapping("/bookstores/{storeID}/books")
-    protected ResponseEntity<EntityModel<Book>> newBook(@RequestBody Book book, @PathVariable Long storeID){
-        BookStore store = storeRepository.getById(storeID);
-        book.setStoreID(storeID);
-        book.setStore(store);
+    @PostMapping("/books")
+    protected ResponseEntity<EntityModel<Book>> newBook(@RequestBody Book book){
         EntityModel<Book> entityModel = assembler.toModel(repository.save(book));
-
         return ResponseEntity
                 .created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
                 .body(entityModel);
     }
-
-    @GetMapping("/bookstores/{storeID}/books/{id}")
-    protected EntityModel<Book> one(@PathVariable Long id, @PathVariable Long storeID) {
+    
+    @GetMapping("/books/{id}")
+    protected EntityModel<Book> one(@PathVariable Long id) {
         Book book = repository.findById(id).orElseThrow(() -> new BookNotFoundException(id));
-
         return assembler.toModel(book);
-
     }
 
-    @GetMapping("/bookstores/{storeID}/books")
-    protected CollectionModel<EntityModel<Book>> all(@PathVariable Long storeID){
-        List<EntityModel<Book>> booksAll = repository.findByStoreID(storeID)
-                .stream()
+    @GetMapping("/books")
+    protected CollectionModel<EntityModel<Book>> all(){
+        List<EntityModel<Book>> books = repository.findAll().stream()
                 .map(assembler::toModel)
                 .collect(Collectors.toList());
-        return CollectionModel.of(booksAll, linkTo(methodOn(BookController.class).all(storeID)).withSelfRel());
+        return CollectionModel.of(books, linkTo(methodOn(BookController.class).all()).withSelfRel());
     }
 
-    @PutMapping("/bookstores/{storeID}/books/{id}")
-    protected Book updateBook(@RequestBody Book newBook, @PathVariable Long id, @PathVariable Long storeID) {
+    @PutMapping("/books/{id}")
+    protected Book updateBook(@RequestBody Book newBook, @PathVariable Long id) {
         return repository.findById(id)
                 .map(book -> {
                     if(newBook.getAuthor() != null) book.setAuthor(newBook.getAuthor());
@@ -71,8 +63,8 @@ public class BookController {
     }
 
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @DeleteMapping("/bookstores/{storeID}/books/{id}")
-    protected void deleteBook(@PathVariable Long id, @PathVariable Long storeID) {
+    @DeleteMapping("/books/{id}")
+    protected void deleteBook(@PathVariable Long id) {
         repository.findById(id).orElseThrow(() -> new BookNotFoundException(id));
         repository.deleteById(id);
     }
