@@ -59,7 +59,6 @@ public class BookStoreController {
                 .body(entityModel);
     }
 
-    //TODO Clean Up these three methods
     @PostMapping("/bookstores/{id}")
     protected void addServer(@RequestBody String json, @PathVariable Long id){
         JsonObject jso = new JsonParser().parse(json).getAsJsonObject();
@@ -68,23 +67,11 @@ public class BookStoreController {
         this.serverMap.put(givenID, address);
     }
 
-    // @PostMapping("/bookstores/{id}")
-    // protected void setMap(@RequestBody String map)
-    // {
-    //     Gson gson = new Gson();
-    //     this.serverMap = (HashMap<Long,String>)gson.fromJson(map, HashMap.class);
-    // }
-
-
-
-
-
     @GetMapping("/bookstores/{storeID}")
     protected EntityModel<BookStore> one(@PathVariable Long storeID) {
         BookStore bookStore = repository.findById(storeID).orElseThrow(() -> new BookStoreNotFoundException(storeID));
         return assembler.toModel(bookStore);
     }
-
 
     @GetMapping("/bookstores")
     protected CollectionModel<EntityModel<BookStore>> all(){
@@ -93,16 +80,6 @@ public class BookStoreController {
                 .collect(Collectors.toList());
         return CollectionModel.of(bookStores, linkTo(methodOn(BookStoreController.class).all()).withSelfRel());
     }
-
-    @GetMapping("")
-
-
-
-
-
-
-
-
 
     @PutMapping("/bookstores/{storeID}")
     protected BookStore updateBookStore(@RequestBody BookStore newBookStore, @PathVariable Long storeID) {

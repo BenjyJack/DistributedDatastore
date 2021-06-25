@@ -27,6 +27,7 @@ public class HubController {
         String address = jso.getAsJsonObject().get("address").getAsString(); 
         this.hub.addServer(id, address);
         for (Long x : this.hub.getMap().keySet()) {
+            //Send the newly created server to the pre-existing servers
             URL url = new URL(this.hub.getMap().get(x));
             HttpURLConnection con = (HttpURLConnection) url.openConnection();
             con.setRequestMethod("POST");
@@ -38,7 +39,7 @@ public class HubController {
             out.flush();
             out.close();
 
-
+            //Send all pre-existing servers to the newly created server
             url = new URL(address);
             con = (HttpURLConnection) url.openConnection();
             con.setRequestMethod("POST");
@@ -53,7 +54,6 @@ public class HubController {
             out.writeBytes(str);
             out.flush();
             out.close();
-
         }
     }
     @GetMapping("/hub")
@@ -62,7 +62,4 @@ public class HubController {
         String json = gson.toJson(this.hub.getMap());
         return json;
     }
-
-
-
 }
