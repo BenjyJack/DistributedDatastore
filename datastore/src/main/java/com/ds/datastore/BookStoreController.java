@@ -10,11 +10,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.DataOutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 
 @RestController
 public class BookStoreController {
@@ -24,7 +28,7 @@ public class BookStoreController {
     private final BookRepository bookRepository;
     private HashMap<Long,String> serverMap;
 
-    public BookStoreController(BookStoreRepository repository, BookStoreModelAssembler assembler, BookRepository bookRepository) {
+    public BookStoreController(BookStoreRepository repository, BookStoreModelAssembler assembler, BookRepository bookRepository) throws Exception{
         this.repository = repository;
         this.assembler = assembler;
         this.bookRepository = bookRepository;
@@ -32,9 +36,23 @@ public class BookStoreController {
     }
 
     @PostMapping("/bookstores")
-    protected ResponseEntity<EntityModel<BookStore>> newBookStore(@RequestBody BookStore bookStore){
+    protected ResponseEntity<EntityModel<BookStore>> newBookStore(@RequestBody BookStore bookStore) throws Exception{
         EntityModel<BookStore> entityModel = assembler.toModel(repository.save(bookStore));
-
+        URL url = new URL("http://localhost:8080/hub");
+        HttpURLConnection con = (HttpURLConnection) url.openConnection();
+        con.setRequestMethod("POST");
+        con.setRequestProperty("Content-Type", "application/json");
+        con.setDoOutput(true);
+        DataOutputStream out = new DataOutputStream(con.getOutputStream());
+        Gson gson = new Gson();
+        JsonObject jso = new JsonObject();
+        jso.addProperty("id", bookStore.getId());
+        jso.addProperty("address", "http://localhost:8081/bookstores/" + bookStore.getId());
+        String str = gson.toJson(jso);
+        out.writeBytes(str);
+        int x = con.getResponseCode();
+        out.flush();
+        out.close();
         return ResponseEntity
                 .created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
                 .body(entityModel);
@@ -42,16 +60,16 @@ public class BookStoreController {
 
     //TODO Clean Up these three methods
     @PostMapping("/bookstores/{id}")
-    protected void addServer(Long storeID, String address){
+    protected void addServer(@RequestBody Long storeID, @RequestBody String address){
         this.serverMap.put(storeID, address);
     }
 
-    @PostMapping("/bookstores/{id}")
-    protected void setMap(@RequestBody String map)
-    {
-        Gson gson = new Gson();
-        this.serverMap = (HashMap<Long,String>)gson.fromJson(map, HashMap.class);
-    }
+    // @PostMapping("/bookstores/{id}")
+    // protected void setMap(@RequestBody String map)
+    // {
+    //     Gson gson = new Gson();
+    //     this.serverMap = (HashMap<Long,String>)gson.fromJson(map, HashMap.class);
+    // }
 
 
 
