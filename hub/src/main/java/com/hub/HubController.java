@@ -26,32 +26,35 @@ public class HubController {
         Long id = jso.getAsJsonObject().get("id").getAsLong();
         String address = jso.getAsJsonObject().get("address").getAsString(); 
         this.hub.addServer(id, address);
-        for (String x : this.hub.getMap().values()) {
-            URL url = new URL(x);
+        for (Long x : this.hub.getMap().keySet()) {
+            URL url = new URL(this.hub.getMap().get(x));
             HttpURLConnection con = (HttpURLConnection) url.openConnection();
             con.setRequestMethod("POST");
             con.setRequestProperty("Content-Type", "application/json");
             con.setDoOutput(true);
             DataOutputStream out = new DataOutputStream(con.getOutputStream());
-            out.writeBytes("{id:" + id +", \naddress:" + address +"}");
+            out.writeBytes(json);
+            int y = con.getResponseCode();
             out.flush();
             out.close();
-        }
-        URL url = new URL(address);
-        HttpURLConnection con = (HttpURLConnection) url.openConnection();
-        con.setRequestMethod("POST");
-        con.setRequestProperty("Content-Type", "application/json");
-        con.setDoOutput(true);
-        DataOutputStream out = new DataOutputStream(con.getOutputStream());
-        for (Long x : this.hub.getMap().keySet()) {
-            out.writeBytes("{id:" + x +", \naddress:" + this.hub.getMap().get(x) +"}");
-        }
-        // Gson gson = new Gson();
-        // String json = gson.toJson(this.hub.getMap());
-        // out.writeBytes(json);
-        out.flush();
-        out.close();
 
+
+            url = new URL(address);
+            con = (HttpURLConnection) url.openConnection();
+            con.setRequestMethod("POST");
+            con.setRequestProperty("Content-Type", "application/json");
+            con.setDoOutput(true);
+            Gson gson = new Gson();
+            jso = new JsonObject();
+            jso.addProperty("id", x);
+            jso.addProperty("address", this.hub.getMap().get(x));
+            String str = gson.toJson(jso);
+            out = new DataOutputStream(con.getOutputStream());
+            out.writeBytes(str);
+            out.flush();
+            out.close();
+
+        }
     }
     @GetMapping("/hub")
     protected String getMap(){

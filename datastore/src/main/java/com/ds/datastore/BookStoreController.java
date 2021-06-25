@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 @RestController
 public class BookStoreController {
@@ -60,8 +61,11 @@ public class BookStoreController {
 
     //TODO Clean Up these three methods
     @PostMapping("/bookstores/{id}")
-    protected void addServer(@RequestBody Long storeID, @RequestBody String address){
-        this.serverMap.put(storeID, address);
+    protected void addServer(@RequestBody String json, @PathVariable Long id){
+        JsonObject jso = new JsonParser().parse(json).getAsJsonObject();
+        Long givenID = jso.getAsJsonObject().get("id").getAsLong();
+        String address = jso.getAsJsonObject().get("address").getAsString();
+        this.serverMap.put(givenID, address);
     }
 
     // @PostMapping("/bookstores/{id}")
