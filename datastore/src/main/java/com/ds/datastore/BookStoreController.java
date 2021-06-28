@@ -12,7 +12,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.DataOutputStream;
 import java.net.HttpURLConnection;
+import java.net.InetAddress;
+import java.net.Socket;
 import java.net.URL;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -21,25 +24,31 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
+import javax.servlet.ServletRequest;
+
 @RestController
 public class BookStoreController {
 
     private final BookStoreRepository repository;
     private final BookStoreModelAssembler assembler;
     private final BookRepository bookRepository;
-    private HashMap<Long,String> serverMap;
+
 
     public BookStoreController(BookStoreRepository repository, BookStoreModelAssembler assembler, BookRepository bookRepository) throws Exception{
+        if(!repository.findAll().isEmpty()) {
+            System.out.println(InetAddress.getLocalHost());
+        }
+        System.out.println(InetAddress.getLocalHost().getHostName());
+        System.out.println(Arrays.toString(InetAddress.getLocalHost().getAddress()));
         this.repository = repository;
         this.assembler = assembler;
         this.bookRepository = bookRepository;
-        this.serverMap = new HashMap<>();
     }
 
     @PostMapping("/bookstores")
     protected ResponseEntity<EntityModel<BookStore>> newBookStore(@RequestBody BookStore bookStore) throws Exception{
         EntityModel<BookStore> entityModel = assembler.toModel(repository.save(bookStore));
-        URL url = new URL("http://localhost:8080/hub");
+        URL url = new URL("http://71.187.80.134:8080/hub");
         HttpURLConnection con = (HttpURLConnection) url.openConnection();
         con.setRequestMethod("POST");
         con.setRequestProperty("Content-Type", "application/json");
@@ -48,7 +57,7 @@ public class BookStoreController {
         Gson gson = new Gson();
         JsonObject jso = new JsonObject();
         jso.addProperty("id", bookStore.getId());
-        jso.addProperty("address", "http://localhost:8081/bookstores/" + bookStore.getId());
+        jso.addProperty("address", String.valueOf(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri()));
         String str = gson.toJson(jso);
         out.writeBytes(str);
         int x = con.getResponseCode();
@@ -64,7 +73,8 @@ public class BookStoreController {
         JsonObject jso = new JsonParser().parse(json).getAsJsonObject();
         Long givenID = jso.getAsJsonObject().get("id").getAsLong();
         String address = jso.getAsJsonObject().get("address").getAsString();
-        this.serverMap.put(givenID, address);
+        BookStore store = this.repository.findById(id).get();
+        store.addServer(givenID,address);
     }
 
     @GetMapping("/bookstores/{storeID}")
