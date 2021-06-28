@@ -12,10 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.DataOutputStream;
 import java.net.HttpURLConnection;
-import java.net.InetAddress;
-import java.net.Socket;
 import java.net.URL;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -24,22 +21,16 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
-import javax.servlet.ServletRequest;
-
 @RestController
 public class BookStoreController {
 
     private final BookStoreRepository repository;
     private final BookStoreModelAssembler assembler;
     private final BookRepository bookRepository;
-
+    private HashMap<Long, String> serverMap;
 
     public BookStoreController(BookStoreRepository repository, BookStoreModelAssembler assembler, BookRepository bookRepository) throws Exception{
-        if(!repository.findAll().isEmpty()) {
-            System.out.println(InetAddress.getLocalHost());
-        }
-        System.out.println(InetAddress.getLocalHost().getHostName());
-        System.out.println(Arrays.toString(InetAddress.getLocalHost().getAddress()));
+        this.serverMap = new HashMap<>();
         this.repository = repository;
         this.assembler = assembler;
         this.bookRepository = bookRepository;
@@ -74,7 +65,7 @@ public class BookStoreController {
         Long givenID = jso.getAsJsonObject().get("id").getAsLong();
         String address = jso.getAsJsonObject().get("address").getAsString();
         BookStore store = this.repository.findById(id).get();
-        store.addServer(givenID,address);
+        this.serverMap.put(givenID, address);
     }
 
     @GetMapping("/bookstores/{storeID}")

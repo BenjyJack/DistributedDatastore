@@ -1,7 +1,6 @@
 package com.ds.datastore;
 
 import javax.persistence.*;
-import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
 
@@ -18,7 +17,6 @@ public class BookStore {
     @Column (name = "Phone", length = 10)
     private String phone;
     private String address;
-    private HashMap<Long,String> serverMap = new HashMap<>();
 
     @OneToMany(mappedBy = "store", cascade = CascadeType.ALL, orphanRemoval = true)
     List<Book> books = new ArrayList<>();
@@ -55,9 +53,5 @@ public class BookStore {
 
     public void setAddress(String address) {
         this.address = address;
-    }
-
-    public boolean addServer(Long id, String address){
-        return address.equals(this.serverMap.put(id, address));
     }
 }
