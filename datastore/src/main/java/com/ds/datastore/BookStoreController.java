@@ -4,6 +4,8 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 import com.google.gson.reflect.TypeToken;
+import com.google.gson.stream.JsonReader;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
@@ -14,6 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.HttpRequestHandler;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.BufferedReader;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.InputStream;
@@ -73,12 +76,33 @@ public class BookStoreController {
         con.setRequestMethod("GET");
         con.setRequestProperty("accept", "application/json");
         con.setDoOutput(true);
-        InputStream in = con.getInputStream();
 
-        JsonParser parser = new JsonParser();
-        JsonObject jsonObject = (JsonObject) parser.parse(new InputStreamReader(in, "UTF-8"));
+        con.connect();
+        // DataOutputStream out = new DataOutputStream(con.getOutputStream());
+        // out.writeBytes()
+        InputStream instream = con.getInputStream();
+        JsonReader reader = new JsonReader(new InputStreamReader(instream, "UTF-8"));
+        Gson gson = new Gson();
+        HashMap<Long, String> map = gson.fromJson(reader, HashMap.class);
+        // BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
+        // String inputLine;
+        // StringBuffer response = new StringBuffer();
 
-        HashMap<Long, String> map = new Gson().fromJson(jsonObject, new TypeToken<HashMap<Long, String>>() {}.getType());
+        // while((inputLine = in.readLine()) != null){
+        //     response.append(inputLine);
+        // }
+        // Gson gson = new Gson();
+        // HashMap<Long, String> map = gson.fromJson(in, new TypeToken<HashMap<Long, String>>() {}.getType());
+
+        instream.close();
+
+        // DataInputStream in = new DataInputStream(con.getInputStream());
+
+        // //InputStream in = con.getInputStream();
+
+        // JsonParser parser = new JsonParser();
+        
+        // HashMap<Long, String> map = new Gson().fromJson(jsonObject, new TypeToken<HashMap<Long, String>>() {}.getType());
 
         return map;
 
