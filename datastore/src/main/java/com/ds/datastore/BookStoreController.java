@@ -95,6 +95,7 @@ public class BookStoreController {
         // HashMap<Long, String> map = gson.fromJson(in, new TypeToken<HashMap<Long, String>>() {}.getType());
 
         instream.close();
+        reader.close();
 
         // DataInputStream in = new DataInputStream(con.getInputStream());
 
