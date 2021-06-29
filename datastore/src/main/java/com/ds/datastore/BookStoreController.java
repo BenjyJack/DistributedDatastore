@@ -27,6 +27,7 @@ import java.net.URI;
 import java.net.URL;
 import java.net.http.HttpClient;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -81,7 +82,7 @@ public class BookStoreController {
         // DataOutputStream out = new DataOutputStream(con.getOutputStream());
         // out.writeBytes()
         InputStream instream = con.getInputStream();
-        JsonReader reader = new JsonReader(new InputStreamReader(instream, "UTF-8"));
+        JsonReader reader = new JsonReader(new InputStreamReader(instream, StandardCharsets.UTF_8));
         Gson gson = new Gson();
         HashMap<Long, String> map = gson.fromJson(reader, HashMap.class);
         // BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
