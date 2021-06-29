@@ -33,6 +33,8 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
+import javax.annotation.PostConstruct;
+
 @RestController
 public class BookStoreController {
 
@@ -43,21 +45,25 @@ public class BookStoreController {
     @Value("${application.baseUrl}")
     private String url;
 
-    public BookStoreController(BookStoreRepository repository, BookStoreModelAssembler assembler, BookRepository bookRepository) throws Exception{
-        this.assembler = assembler;
-        this.bookRepository = bookRepository;
-        if(!repository.findAll().isEmpty()){
+    @PostConstruct
+    private void restartChangedOrNew() throws Exception {
+        if(!repository.findAll().isEmpty()) {
             this.serverMap = reclaimMap();
-            this.repository = repository;
+
             if(!serverMap.get(repository.findAll().get(0).getId()).equals(url))
             {
                 postToHub(repository.findAll().get(0));
             }
-        }else{
-            this.serverMap = new HashMap<>();
-            this.repository = repository;
         }
 
+
+    }
+
+    public BookStoreController(BookStoreRepository repository, BookStoreModelAssembler assembler, BookRepository bookRepository) throws Exception{
+        this.assembler = assembler;
+        this.bookRepository = bookRepository;
+        this.repository=repository;
+        this.serverMap = new HashMap<>();
 
     }
     private HashMap<Long, String> reclaimMap() throws Exception{
