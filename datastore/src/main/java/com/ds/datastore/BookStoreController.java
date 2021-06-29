@@ -44,19 +44,21 @@ public class BookStoreController {
     private String url;
 
     public BookStoreController(BookStoreRepository repository, BookStoreModelAssembler assembler, BookRepository bookRepository) throws Exception{
+        this.assembler = assembler;
+        this.bookRepository = bookRepository;
         if(!repository.findAll().isEmpty()){
             this.serverMap = reclaimMap();
+            this.repository = repository;
             if(!serverMap.get(repository.findAll().get(0).getId()).equals(url))
             {
                 postToHub(repository.findAll().get(0));
             }
         }else{
             this.serverMap = new HashMap<>();
+            this.repository = repository;
         }
 
-        this.repository = repository;
-        this.assembler = assembler;
-        this.bookRepository = bookRepository;
+
     }
     private HashMap<Long, String> reclaimMap() throws Exception{
         URL url = new URL("http://71.187.80.134:8080/hub");
