@@ -32,6 +32,7 @@ import java.util.stream.Collectors;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import javax.annotation.PostConstruct;
 
@@ -110,6 +111,8 @@ public class BookStoreController {
         try{
             bookStore = repository.findById(storeID).orElseThrow(() -> new BookStoreNotFoundException(storeID));
             EntityModel<BookStore> entityModel = assembler.toModel(repository.save(bookStore));
+            UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(url);
+            URI uri = builder.path("/bookstores/{storeId}/books/{id}").buildAndExpand(storeID).toUri();
             return ResponseEntity
                     .created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
                     .body(entityModel);
