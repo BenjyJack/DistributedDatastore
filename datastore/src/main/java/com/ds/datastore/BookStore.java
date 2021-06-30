@@ -15,10 +15,10 @@ public class BookStore {
 
     @Column(name = "Name")
     private String name;
-    @Column (name = "Phone")
+    @Column(name = "Phone")
     private String phone;
-    @Column (name = "Address")
-    private String address;
+    @Column(name = "Address")
+    private String streetAddress;
 
     @OneToMany(mappedBy = "store", cascade = CascadeType.ALL, orphanRemoval = true)
     List<Book> books = new ArrayList<>();
@@ -49,11 +49,11 @@ public class BookStore {
         this.phone = phone;
     }
 
-    public String getAddress() {
-        return address;
+    public String getStreetAddress() {
+        return streetAddress;
     }
 
-    public void setAddress(String address) {
-        this.address = address;
+    public void setStreetAddress(String streetAddress) {
+        this.streetAddress = streetAddress;
     }
 }

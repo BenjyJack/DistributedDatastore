@@ -11,6 +11,7 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -122,12 +123,44 @@ public class BookStoreController {
     }
 
     @GetMapping("/bookstores")
-    protected CollectionModel<EntityModel<BookStore>> all(){
-        List<EntityModel<BookStore>> bookStores = repository.findAll().stream()
-                .map(assembler::toModel)
-                .collect(Collectors.toList());
-        return CollectionModel.of(bookStores, linkTo(methodOn(BookStoreController.class).all()).withSelfRel());
+    protected CollectionModel<EntityModel<BookStore>> all() throws Exception {
+        List<EntityModel<BookStore>> entModelList = new ArrayList<>();
+        for (Long id : this.serverMap.keySet()) {
+            ResponseEntity<BookStore> rpe = one(id);
+            BookStore bStore = rpe.getBody();
+            EntityModel<BookStore> em = assembler.toModel(bStore);
+            entModelList.add(em);
+        }
+        return CollectionModel.of(entModelList, linkTo(methodOn(BookStoreController.class).all()).withSelfRel());
     }
+
+
+
+
+//        for(Long id : serverMap.keySet()) {
+//            UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(this.serverMap.get(id));
+//            String uri = builder.path("/bookstores/" + id).buildAndExpand(id).toString();
+//            URL url = new URL(uri);
+//            HttpURLConnection con = (HttpURLConnection) url.openConnection();
+//            con.setRequestMethod("GET");
+//            con.setRequestProperty("accept", "application/json");
+//            con.setDoOutput(true);
+//            con.connect();
+//            InputStream instream = con.getInputStream();
+//            System.out.println(instream);
+//            JsonReader reader = new JsonReader(new InputStreamReader(instream, StandardCharsets.UTF_8));
+//            JsonObject jso = new JsonParser().parse(reader).getAsJsonObject();
+//            System.out.println(jso);
+//            instream.close();
+//            reader.close();
+//            jsonObjects.add(jso);
+//        }
+//        List<EntityModel<BookStore>> bookStores = repository.findAll().stream()
+//                .map(assembler::toModel)
+//                .collect(Collectors.toList());
+//        return CollectionModel.of(bookStores, linkTo(methodOn(BookStoreController.class).all()).withSelfRel());
+
+//    }
 
     @PutMapping("/bookstores/{storeID}")
     protected BookStore updateBookStore(@RequestBody BookStore newBookStore, @PathVariable Long storeID) {
@@ -135,7 +168,7 @@ public class BookStoreController {
                 .map(bookStore -> {
                     if(newBookStore.getName() != null) bookStore.setName(newBookStore.getName());
                     if(newBookStore.getPhone() != null) bookStore.setPhone(newBookStore.getPhone());
-                    if(newBookStore.getAddress() != null) bookStore.setAddress(newBookStore.getAddress());
+                    if(newBookStore.getStreetAddress() != null) bookStore.setStreetAddress(newBookStore.getStreetAddress());
                     return repository.save(bookStore);
                 })
                 .orElseThrow(() -> new BookStoreNotFoundException(storeID));
