@@ -3,6 +3,8 @@ package com.hub;
 import org.hibernate.annotations.Parameter;
 import org.springframework.data.repository.query.Param;
 import org.springframework.web.bind.annotation.*;
+
+import java.io.OutputStream;
 import java.util.HashMap;
 
 import com.google.gson.Gson;
@@ -24,7 +26,7 @@ public class HubController {
     protected void addServer(@RequestBody String json) throws Exception {
         JsonObject jso = new JsonParser().parse(json).getAsJsonObject();
         Long id = jso.getAsJsonObject().get("id").getAsLong();
-        String address = jso.getAsJsonObject().get("address").getAsString(); 
+        String address = jso.getAsJsonObject().get("address").getAsString();
         this.hub.addServer(id, address);
         for (Long x : this.hub.getMap().keySet()) {
             //Send the newly created server to the pre-existing servers
@@ -33,27 +35,29 @@ public class HubController {
             con.setRequestMethod("POST");
             con.setRequestProperty("Content-Type", "application/json");
             con.setDoOutput(true);
-            DataOutputStream out = new DataOutputStream(con.getOutputStream());
-            out.writeBytes(json);
-            int y = con.getResponseCode();
-            out.flush();
-            out.close();
+            try(OutputStream os = con.getOutputStream()) {
+                byte[] input = json.getBytes("utf-8");
+                os.write(input, 0, input.length);
+            }
 
-            //Send all pre-existing servers to the newly created server
-            url = new URL(address);
-            con = (HttpURLConnection) url.openConnection();
-            con.setRequestMethod("POST");
-            con.setRequestProperty("Content-Type", "application/json");
-            con.setDoOutput(true);
-            Gson gson = new Gson();
-            jso = new JsonObject();
-            jso.addProperty("id", x);
-            jso.addProperty("address", this.hub.getMap().get(x));
-            String str = gson.toJson(jso);
-            out = new DataOutputStream(con.getOutputStream());
-            out.writeBytes(str);
-            out.flush();
-            out.close();
+            int y = con.getResponseCode();
+
+//            //Send all pre-existing servers to the newly created server
+//            url = new URL(address);
+//            con = (HttpURLConnection) url.openConnection();
+//            con.setRequestMethod("POST");
+//            con.setRequestProperty("Content-Type", "application/json");
+//            con.setDoOutput(true);
+//            Gson gson = new Gson();
+//            jso = new JsonObject();
+//            jso.addProperty("id", x);
+//            jso.addProperty("address", this.hub.getMap().get(x));
+//            String str = gson.toJson(jso);
+//            out = new DataOutputStream(con.getOutputStream());
+//            out.writeBytes(str);
+//            out.flush();
+//            out.close();
+            System.out.println(y);
         }
     }
     @GetMapping("/hub")
