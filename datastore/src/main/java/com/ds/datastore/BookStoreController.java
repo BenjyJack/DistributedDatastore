@@ -21,6 +21,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.ProtocolException;
 import java.net.URI;
@@ -54,7 +55,6 @@ public class BookStoreController {
     private void restartChangedOrNew() throws Exception {
         if(!repository.findAll().isEmpty()) {
             this.serverMap = reclaimMap();
-
             if(!serverMap.get(repository.findAll().get(0).getId()).equals(url))
             {
                 postToHub(repository.findAll().get(0));
@@ -84,7 +84,8 @@ public class BookStoreController {
         InputStream instream = con.getInputStream();
         JsonReader reader = new JsonReader(new InputStreamReader(instream, StandardCharsets.UTF_8));
         Gson gson = new Gson();
-        HashMap<Long, String> map = gson.fromJson(reader, HashMap.class);
+        Type type = new TypeToken<HashMap<Long, String>>(){}.getType();
+        HashMap<Long, String> map = gson.fromJson(reader, type);
         // BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
         // String inputLine;
         // StringBuffer response = new StringBuffer();
@@ -137,8 +138,8 @@ public class BookStoreController {
         try{
             bookStore = repository.findById(storeID).orElseThrow(() -> new BookStoreNotFoundException(storeID));
             EntityModel<BookStore> entityModel = assembler.toModel(repository.save(bookStore));
-            UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(url);
-            URI uri = builder.path("/bookstores/{storeId}/books/{id}").buildAndExpand(storeID).toUri();
+            //UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(url);
+            //URI uri = builder.path("/bookstores/{storeId}/books/{id}").buildAndExpand(storeID).toUri();
             return ResponseEntity
                     .created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
                     .body(entityModel);
@@ -194,7 +195,7 @@ public class BookStoreController {
         Gson gson = new Gson();
         JsonObject jso = new JsonObject();
         jso.addProperty("id", bookStore.getId());
-        jso.addProperty("address", String.valueOf(url));
+        jso.addProperty("address", String.valueOf(this.url));
         String str = gson.toJson(jso);
         out.writeBytes(str);
         int x = con.getResponseCode();
