@@ -7,12 +7,19 @@ import javax.persistence.*;
 @Entity
 public class Book {
 
+    @Column(name = "Id")
     private @Id @GeneratedValue Long id;
+    @Column(name = "Author")
     private String author;
+    @Column(name = "Category")
     private String category;
+    @Column(name = "Title")
     private String title;
+    @Column(name = "Price")
     private double price = -1;
+    @Column(name = "Description")
     private String description;
+    @Column(name = "Language")
     private Language language;
 
     @ManyToOne(fetch = FetchType.LAZY)

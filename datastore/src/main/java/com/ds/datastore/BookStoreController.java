@@ -63,7 +63,7 @@ public class BookStoreController {
     public BookStoreController(BookStoreRepository repository, BookStoreModelAssembler assembler, BookRepository bookRepository) throws Exception{
         this.assembler = assembler;
         this.bookRepository = bookRepository;
-        this.repository=repository;
+        this.repository = repository;
         this.serverMap = new HashMap<>();
     }
     

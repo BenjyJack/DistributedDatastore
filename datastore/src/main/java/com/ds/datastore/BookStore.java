@@ -9,14 +9,15 @@ import java.util.ArrayList;
 public class BookStore {
 
     @Id
-    @Column(name = "id", nullable = false)
+    @Column(name = "Id", nullable = false)
     @GeneratedValue(strategy = GenerationType.AUTO)
     private long id;
 
-    @Column(name = "name", length = 50)
+    @Column(name = "Name")
     private String name;
-    @Column (name = "Phone", length = 10)
+    @Column (name = "Phone")
     private String phone;
+    @Column (name = "Address")
     private String address;
 
     @OneToMany(mappedBy = "store", cascade = CascadeType.ALL, orphanRemoval = true)
