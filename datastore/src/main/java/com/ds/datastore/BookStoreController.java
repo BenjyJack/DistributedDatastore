@@ -3,6 +3,23 @@ package com.ds.datastore;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
+import java.io.DataOutputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.lang.reflect.Type;
+import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import javax.annotation.PostConstruct;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 
@@ -10,36 +27,17 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.IanaLinkRelations;
-import org.springframework.http.HttpRequest;
-import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.HttpRequestHandler;
-import org.springframework.web.bind.annotation.*;
-
-import java.io.BufferedReader;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.lang.reflect.Type;
-import java.net.HttpURLConnection;
-import java.net.ProtocolException;
-import java.net.URI;
-import java.net.URL;
-import java.net.http.HttpClient;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriComponentsBuilder;
-
-import javax.annotation.PostConstruct;
 
 @RestController
 public class BookStoreController {
@@ -60,8 +58,6 @@ public class BookStoreController {
                 postToHub(repository.findAll().get(0));
             }
         }
-
-
     }
 
     public BookStoreController(BookStoreRepository repository, BookStoreModelAssembler assembler, BookRepository bookRepository) throws Exception{
@@ -69,50 +65,24 @@ public class BookStoreController {
         this.bookRepository = bookRepository;
         this.repository=repository;
         this.serverMap = new HashMap<>();
-
     }
+    
     private HashMap<Long, String> reclaimMap() throws Exception{
         URL url = new URL("http://71.187.80.134:8080/hub");
         HttpURLConnection con = (HttpURLConnection) url.openConnection();
         con.setRequestMethod("GET");
         con.setRequestProperty("accept", "application/json");
         con.setDoOutput(true);
-
         con.connect();
-        // DataOutputStream out = new DataOutputStream(con.getOutputStream());
-        // out.writeBytes()
         InputStream instream = con.getInputStream();
         JsonReader reader = new JsonReader(new InputStreamReader(instream, StandardCharsets.UTF_8));
         Gson gson = new Gson();
         Type type = new TypeToken<HashMap<Long, String>>(){}.getType();
         HashMap<Long, String> map = gson.fromJson(reader, type);
-        // BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
-        // String inputLine;
-        // StringBuffer response = new StringBuffer();
-
-        // while((inputLine = in.readLine()) != null){
-        //     response.append(inputLine);
-        // }
-        // Gson gson = new Gson();
-        // HashMap<Long, String> map = gson.fromJson(in, new TypeToken<HashMap<Long, String>>() {}.getType());
-
         instream.close();
         reader.close();
-
-        // DataInputStream in = new DataInputStream(con.getInputStream());
-
-        // //InputStream in = con.getInputStream();
-
-        // JsonParser parser = new JsonParser();
-        
-        // HashMap<Long, String> map = new Gson().fromJson(jsonObject, new TypeToken<HashMap<Long, String>>() {}.getType());
-
         return map;
-
-
-
     }
-
 
     @PostMapping("/bookstores")
     protected ResponseEntity<EntityModel<BookStore>> newBookStore(@RequestBody BookStore bookStore) throws Exception{
@@ -133,24 +103,22 @@ public class BookStoreController {
 
     @GetMapping("/bookstores/{storeID}")
     protected ResponseEntity one(@PathVariable Long storeID) {
-
         BookStore bookStore = null;
         try{
             bookStore = repository.findById(storeID).orElseThrow(() -> new BookStoreNotFoundException(storeID));
             EntityModel<BookStore> entityModel = assembler.toModel(repository.save(bookStore));
-            //UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(url);
-            //URI uri = builder.path("/bookstores/{storeId}/books/{id}").buildAndExpand(storeID).toUri();
             return ResponseEntity
                     .created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
                     .body(entityModel);
         }catch (BookStoreNotFoundException e){
             if(serverMap.containsKey(storeID)){
-                return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(serverMap.get(storeID))).build();
+                UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(this.serverMap.get(storeID));
+                URI uri = builder.path("/bookstores/{storeId}").buildAndExpand(storeID).toUri();
+                return ResponseEntity.status(HttpStatus.PERMANENT_REDIRECT).location(uri).build();
             }else{
                 throw new BookStoreNotFoundException(storeID);
             }
         }
-
     }
 
     @GetMapping("/bookstores")
@@ -198,12 +166,8 @@ public class BookStoreController {
         jso.addProperty("address", String.valueOf(this.url));
         String str = gson.toJson(jso);
         out.writeBytes(str);
-        int x = con.getResponseCode();
         out.flush();
         out.close();
-
         return entityModel;
-
     }
-
 }
