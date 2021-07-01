@@ -3,6 +3,7 @@ package com.ds.datastore;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
+import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -100,7 +101,7 @@ public class BookStoreController {
             BookStore store = this.repository.findAll().get(0);
             store.setServerId(givenID);
             //store.setId(givenID);
-            assembler.toModel(repository.save(store));
+            assembler.toModel(repository.saveAndFlush(store));
         }
 
         this.serverMap.put(givenID, address);
@@ -207,6 +208,17 @@ public class BookStoreController {
         int x = con.getResponseCode();
         out.flush();
         out.close();
-        return assembler.toModel(repository.save(bookStore));
+        try(BufferedReader br = new BufferedReader(
+                new InputStreamReader(con.getInputStream(), StandardCharsets.UTF_8))) {
+            StringBuilder response = new StringBuilder();
+            String responseLine = null;
+            while ((responseLine = br.readLine()) != null) {
+                response.append(responseLine.trim());
+            }
+            repository.findAll().get(0).setServerId(Long.parseLong(response.toString()));
+            //System.out.println(response.toString());
+        }
+        repository.flush();
+        return assembler.toModel(repository.findAll().get(0));
     }
 }
