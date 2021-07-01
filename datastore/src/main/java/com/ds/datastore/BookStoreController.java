@@ -61,7 +61,6 @@ public class BookStoreController {
         this.assembler = assembler;
         this.bookRepository = bookRepository;
         this.repository = repository;
-        this.serverMap = new HashMap<>();
     }
 
     private HashMap<Long, String> reclaimMap() throws Exception{
