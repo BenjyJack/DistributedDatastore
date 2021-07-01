@@ -1,18 +1,14 @@
 package com.hub;
 
-import org.hibernate.annotations.Parameter;
-import org.springframework.data.repository.query.Param;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.OutputStream;
-import java.util.HashMap;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import javax.annotation.PostConstruct;
-import java.io.DataOutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.List;
@@ -44,7 +40,6 @@ public class HubController {
         this.hub.addServer(server.getId(), address);
         Gson gson = new Gson();
         JsonObject jsobj = new JsonObject();
-        // jso.addProperty("id", bookStore.getId());
         jsobj.addProperty("address", address);
         String str = gson.toJson(json);
         for (Long x : this.hub.getMap().keySet()) {
@@ -60,25 +55,8 @@ public class HubController {
             }
 
             int y = con.getResponseCode();
-
-//            //Send all pre-existing servers to the newly created server
-//            url = new URL(address);
-//            con = (HttpURLConnection) url.openConnection();
-//            con.setRequestMethod("POST");
-//            con.setRequestProperty("Content-Type", "application/json");
-//            con.setDoOutput(true);
-//            Gson gson = new Gson();
-//            jso = new JsonObject();
-//            jso.addProperty("id", x);
-//            jso.addProperty("address", this.hub.getMap().get(x));
-//            String str = gson.toJson(jso);
-//            out = new DataOutputStream(con.getOutputStream());
-//            out.writeBytes(str);
-//            out.flush();
-//            out.close();
             System.out.println(y);
         }
-        //TODO make response
     }
     @GetMapping("/hub")
     protected String getMap(){

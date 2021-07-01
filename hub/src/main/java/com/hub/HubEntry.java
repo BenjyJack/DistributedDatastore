@@ -11,7 +11,7 @@ public class HubEntry {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private long id;
 
-    @Column(name = "Server Address", nullable = false)
+    @Column(name = "ServerAddress", nullable = false)
     private String serverAddress;
 
     public String getServerAddress() {
