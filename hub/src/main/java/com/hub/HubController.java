@@ -11,66 +11,84 @@ import com.google.gson.JsonParser;
 
 import javax.annotation.PostConstruct;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @RestController
 public class HubController {
-    private ServerHub hub;
-    private final HubRepository repository;
 
-    @PostConstruct
-    private void mapSetUp(){
-        List<HubEntry> servers = repository.findAll();
-        for (HubEntry entry: servers) {
-            this.hub.addServer(entry.getId(), entry.getServerAddress());
-        }
-    }
+    private final ServerHub hub;
+    private final HubRepository repository;
 
     public HubController(HubRepository repository){
         this.repository = repository;
         this.hub = new ServerHub();
     }
 
+    @PostConstruct
+    private void mapSetUp(){
+        List<HubEntry> servers = repository.findAll();
+        for (HubEntry entry : servers) {
+            this.hub.addServer(entry.getId(), entry.getServerAddress());
+        }
+    }
+
     @PostMapping("/hub")
     protected Long addServer(@RequestBody String json) throws Exception {
-        JsonObject jso = new JsonParser().parse(json).getAsJsonObject();
-        String address = jso.getAsJsonObject().get("address").getAsString();
+        String address = parseAddressFromJsonString(json);
+
+        //TODO: למעשה, do we really need to set the server address twice and save twice?
         HubEntry server = new HubEntry();
         server.setServerAddress(address);
         repository.save(server);
         address = address + server.getId();
         server.setServerAddress(address);
         repository.save(server);
+
+        Long serverId = server.getId();
+        String newServerInfo = storeServerInfoInString(serverId, address);
+        addNewServerToAllServers(newServerInfo);
+        this.hub.addServer(serverId, address);
+        return serverId;
+    }
+
+    @GetMapping("/hub")
+    protected String getMap() {
         Gson gson = new Gson();
-        JsonObject jsObj = new JsonObject();
-        jsObj.addProperty("id", server.getId());
-        jsObj.addProperty("address", address);
-        String str = gson.toJson(jsObj);
-        for (Long x : this.hub.getMap().keySet()) {
+        return gson.toJson(this.hub.getMap());
+    }
+
+    private String parseAddressFromJsonString(String json) {
+        JsonParser parser = new JsonParser();
+        JsonObject jsonObject = parser.parse(json).getAsJsonObject();
+        return jsonObject.get("address").getAsString();
+    }
+
+    private String storeServerInfoInString(Long id, String address) {
+        Gson gson = new Gson();
+        JsonObject newServerAsJson = new JsonObject();
+        newServerAsJson.addProperty("id", id);
+        newServerAsJson.addProperty("address", address);
+        return gson.toJson(newServerAsJson);
+    }
+
+    private void addNewServerToAllServers(String serverInfo) throws Exception {
+        for (Long id : this.hub.getMap().keySet()) {
             //Send the newly created server to the pre-existing servers
-            URL url = new URL(this.hub.getMap().get(x));
+            URL url = new URL(this.hub.getAddress(id));
             HttpURLConnection con = (HttpURLConnection) url.openConnection();
             con.setRequestMethod("POST");
             con.setRequestProperty("Content-Type", "application/json");
             con.setDoOutput(true);
             try(OutputStream os = con.getOutputStream()) {
-                byte[] input = str.getBytes(StandardCharsets.UTF_8);
+                byte[] input = serverInfo.getBytes(StandardCharsets.UTF_8);
                 os.write(input, 0, input.length);
             }
-
             int y = con.getResponseCode();
             System.out.println(y);
         }
-        this.hub.addServer(server.getId(), address);
-        return server.getId();
     }
 
-    @GetMapping("/hub")
-    protected String getMap(){
-        Gson gson = new Gson();
-        String json = gson.toJson(this.hub.getMap());
-        return json;
-    }
 }

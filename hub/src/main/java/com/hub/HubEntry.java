@@ -5,7 +5,6 @@ import javax.persistence.*;
 @Entity
 public class HubEntry {
 
-
     @Id
     @Column(name = "Id", nullable = false)
     @GeneratedValue(strategy = GenerationType.AUTO)
@@ -27,4 +26,5 @@ public class HubEntry {
     public void setId(long id) {
         this.id = id;
     }
+
 }
