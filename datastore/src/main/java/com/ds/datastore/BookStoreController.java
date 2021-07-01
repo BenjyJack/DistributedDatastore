@@ -51,12 +51,9 @@ public class BookStoreController {
 
     @PostConstruct
     private void restartChangedOrNew() throws Exception {
-        if(!repository.findAll().isEmpty()) {
-            this.serverMap = reclaimMap();
-            if(!serverMap.get(repository.findAll().get(0).getId()).equals(url))
-            {
-                postToHub(repository.findAll().get(0));
-            }
+        this.serverMap = reclaimMap();
+        if(!repository.findAll().isEmpty() && !serverMap.get(repository.findAll().get(0).getId()).equals(url)) {
+            postToHub(repository.findAll().get(0));
         }
     }
 
@@ -97,7 +94,12 @@ public class BookStoreController {
         JsonObject jso = new JsonParser().parse(json).getAsJsonObject();
         Long givenID = jso.getAsJsonObject().get("id").getAsLong();
         String address = jso.getAsJsonObject().get("address").getAsString();
-        BookStore store = this.repository.findById(id).get();
+
+        if(id.equals(givenID)){
+
+            this.repository.findAll().get(0).setId(givenID);
+        }
+      //  BookStore store = this.repository.findById(id).get();
         this.serverMap.put(givenID, address);
     }
 
@@ -195,8 +197,8 @@ public class BookStoreController {
         DataOutputStream out = new DataOutputStream(con.getOutputStream());
         Gson gson = new Gson();
         JsonObject jso = new JsonObject();
-        jso.addProperty("id", bookStore.getId());
-        jso.addProperty("address", this.url + "/bookstores/" + bookStore.getId());
+       // jso.addProperty("id", bookStore.getId());
+        jso.addProperty("address", this.url + "/bookstores/");
         String str = gson.toJson(jso);
         out.writeBytes(str);
         int x = con.getResponseCode();

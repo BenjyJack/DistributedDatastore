@@ -11,23 +11,42 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
+import javax.annotation.PostConstruct;
 import java.io.DataOutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.List;
 
 @RestController
 public class HubController {
     private ServerHub hub;
-    public HubController(){
+    private final HubRepository repository;
+
+    @PostConstruct
+    private void mapSetUp(){
+        List<HubEntry> servers = repository.findAll();
+        for (HubEntry entry: servers) {
+            this.hub.addServer(entry.getId(), entry.getServerAddress());
+        }
+    }
+    public HubController(HubRepository repository){
+        this.repository = repository;
         this.hub = new ServerHub();
     }
 
     @PostMapping("/hub")
     protected void addServer(@RequestBody String json) throws Exception {
         JsonObject jso = new JsonParser().parse(json).getAsJsonObject();
-        Long id = jso.getAsJsonObject().get("id").getAsLong();
         String address = jso.getAsJsonObject().get("address").getAsString();
-        this.hub.addServer(id, address);
+        HubEntry server = new HubEntry();
+        address = address + server.getId();
+        server.setServerAddress(address);
+        this.hub.addServer(server.getId(), address);
+        Gson gson = new Gson();
+        JsonObject jsobj = new JsonObject();
+        // jso.addProperty("id", bookStore.getId());
+        jsobj.addProperty("address", address);
+        String str = gson.toJson(json);
         for (Long x : this.hub.getMap().keySet()) {
             //Send the newly created server to the pre-existing servers
             URL url = new URL(this.hub.getMap().get(x));
@@ -36,7 +55,7 @@ public class HubController {
             con.setRequestProperty("Content-Type", "application/json");
             con.setDoOutput(true);
             try(OutputStream os = con.getOutputStream()) {
-                byte[] input = json.getBytes("utf-8");
+                byte[] input = str.getBytes("utf-8");
                 os.write(input, 0, input.length);
             }
 
@@ -59,6 +78,7 @@ public class HubController {
 //            out.close();
             System.out.println(y);
         }
+        //TODO make response
     }
     @GetMapping("/hub")
     protected String getMap(){

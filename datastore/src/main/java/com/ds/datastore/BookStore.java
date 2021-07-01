@@ -9,7 +9,6 @@ public class BookStore {
 
     @Id
     @Column(name = "Id", nullable = false)
-    @GeneratedValue(strategy = GenerationType.AUTO)
     private long id;
 
     @Column(name = "Name")
