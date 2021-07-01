@@ -35,8 +35,11 @@ public class HubController {
         JsonObject jso = new JsonParser().parse(json).getAsJsonObject();
         String address = jso.getAsJsonObject().get("address").getAsString();
         HubEntry server = new HubEntry();
+        server.setServerAddress(address);
+        repository.save(server);
         address = address + server.getId();
         server.setServerAddress(address);
+        repository.save(server);
         this.hub.addServer(server.getId(), address);
         Gson gson = new Gson();
         JsonObject jsobj = new JsonObject();

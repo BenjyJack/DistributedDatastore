@@ -186,7 +186,6 @@ public class BookStoreController {
     }
 
     private EntityModel<BookStore> postToHub(BookStore bookStore) throws Exception {
-        EntityModel<BookStore> entityModel = assembler.toModel(repository.save(bookStore));
         URL hubAddress = new URL("http://71.187.80.134:8080/hub");
         HttpURLConnection con = (HttpURLConnection) hubAddress.openConnection();
         con.setRequestMethod("POST");
@@ -203,6 +202,6 @@ public class BookStoreController {
         int x = con.getResponseCode();
         out.flush();
         out.close();
-        return entityModel;
+        return assembler.toModel(repository.save(bookStore));
     }
 }
