@@ -9,8 +9,11 @@ public class BookStore {
 
     @Id
     @Column(name = "Id", nullable = false)
+    @GeneratedValue
     private long id;
 
+    @Column(name = "ServerID")
+    private Long serverId;
     @Column(name = "Name")
     private String name;
     @Column(name = "Phone")
@@ -53,5 +56,13 @@ public class BookStore {
 
     public void setStreetAddress(String streetAddress) {
         this.streetAddress = streetAddress;
+    }
+
+    public Long getServerId() {
+        return serverId;
+    }
+
+    public void setServerId(Long serverId) {
+        this.serverId = serverId;
     }
 }

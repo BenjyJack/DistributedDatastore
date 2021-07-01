@@ -52,7 +52,7 @@ public class BookStoreController {
     @PostConstruct
     private void restartChangedOrNew() throws Exception {
         this.serverMap = reclaimMap();
-        if(!repository.findAll().isEmpty() && !serverMap.get(repository.findAll().get(0).getId()).equals(url)) {
+        if(!repository.findAll().isEmpty() && !serverMap.get(repository.findAll().get(0).getServerId()).equals(url)) {
             postToHub(repository.findAll().get(0));
         }
     }
@@ -89,16 +89,20 @@ public class BookStoreController {
     }
 
     @PostMapping("/bookstores/{id}")
-    protected void addServer(@RequestBody String json, @PathVariable Long id){
+    protected void addServer(@RequestBody String json, @PathVariable String id){
         JsonObject jso = new JsonParser().parse(json).getAsJsonObject();
         Long givenID = jso.getAsJsonObject().get("id").getAsLong();
         String address = jso.getAsJsonObject().get("address").getAsString();
+        Long idL = Long.parseLong(id);
 
-        if(id.equals(givenID)){
+        if(idL.equals(givenID)){
 
-            this.repository.findAll().get(0).setId(givenID);
+            BookStore store = this.repository.findAll().get(0);
+            store.setServerId(givenID);
+            //store.setId(givenID);
+            assembler.toModel(repository.save(store));
         }
-      //  BookStore store = this.repository.findById(id).get();
+
         this.serverMap.put(givenID, address);
     }
 
@@ -186,6 +190,7 @@ public class BookStoreController {
     }
 
     private EntityModel<BookStore> postToHub(BookStore bookStore) throws Exception {
+        EntityModel<BookStore> store = assembler.toModel(repository.save(bookStore));
         URL hubAddress = new URL("http://71.187.80.134:8080/hub");
         HttpURLConnection con = (HttpURLConnection) hubAddress.openConnection();
         con.setRequestMethod("POST");
