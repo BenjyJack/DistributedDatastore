@@ -32,7 +32,6 @@ public class BookController {
         book.setStoreID(storeID);
         book.setStore(store);
         EntityModel<Book> entityModel = assembler.toModel(repository.save(book));
-
         return ResponseEntity
                 .created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
                 .body(entityModel);
@@ -87,7 +86,9 @@ public class BookController {
 
     private Book checkBook(Long id, Long storeID) {
         Book book = repository.findById(id).orElseThrow(() -> new BookNotFoundException(id));
-        if(!book.getStoreID().equals(storeID))  throw new BookNotFoundException(id);
+        if(!book.getStoreID().equals(storeID)) {
+            throw new BookNotFoundException(id);
+        }
         return book;
     }
 
