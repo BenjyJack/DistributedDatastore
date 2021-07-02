@@ -10,6 +10,7 @@ import java.io.InputStreamReader;
 import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -107,10 +108,9 @@ public class BookStoreController {
     }
 
     @GetMapping("/bookstores/{storeID}")
-    protected ResponseEntity one(@PathVariable Long storeID) {
-        BookStore bookStore = null;
+    protected ResponseEntity one(@PathVariable Long storeID) throws Exception {
         try{
-            bookStore = storeRepository.findById(storeID).orElseThrow(() -> new BookStoreNotFoundException(storeID));
+            BookStore bookStore = storeRepository.findByServerId(storeID).orElseThrow(() -> new BookStoreNotFoundException(storeID));
             EntityModel<BookStore> entityModel = assembler.toModel(storeRepository.save(bookStore));
             return ResponseEntity
                     .created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
@@ -118,10 +118,14 @@ public class BookStoreController {
         }catch (BookStoreNotFoundException e){
             if(serverMap.containsKey(storeID)){
                 UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(this.serverMap.get(storeID));
-                URI uri = builder.path("/bookstores/{storeId}").buildAndExpand(storeID).toUri();
+                URI uri = new URI(builder.toUriString());
                 return ResponseEntity.status(HttpStatus.PERMANENT_REDIRECT).location(uri).build();
+
+
+                /*URI uri = new URI(this.serverMap.get(storeID));
+                return ResponseEntity.status(HttpStatus.PERMANENT_REDIRECT).location(uri).build();*/
             }else{
-                throw new BookStoreNotFoundException(storeID);
+                throw e;
             }
         }
     }
