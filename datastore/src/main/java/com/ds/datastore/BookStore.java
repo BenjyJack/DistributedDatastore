@@ -15,11 +15,11 @@ public class BookStore {
     @Column(name = "ServerID")
     private Long serverId;
     @Column(name = "Name")
-    private String name;
+    private String name = "";
     @Column(name = "Phone")
-    private String phone;
+    private String phone = "";
     @Column(name = "Address")
-    private String streetAddress;
+    private String streetAddress = "";
 
     @OneToMany(mappedBy = "store", cascade = CascadeType.ALL, orphanRemoval = true)
     List<Book> books = new ArrayList<>();

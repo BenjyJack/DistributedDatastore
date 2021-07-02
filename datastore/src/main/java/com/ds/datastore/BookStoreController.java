@@ -132,12 +132,29 @@ public class BookStoreController {
 
     @GetMapping("/bookstores")
     protected CollectionModel<EntityModel<BookStore>> all() throws Exception {
+
         List<EntityModel<BookStore>> entModelList = new ArrayList<>();
         for (Long id : this.serverMap.keySet()) {
-            ResponseEntity<BookStore> rpe = one(id);
-            BookStore bookStore = rpe.getBody();
-            EntityModel<BookStore> em = assembler.toModel(bookStore);
-            entModelList.add(em);
+            URL url = new URL(this.serverMap.get(id));
+            HttpURLConnection con = (HttpURLConnection) url.openConnection();
+            con.setRequestMethod("GET");
+            con.setRequestProperty("accept", "application/json");
+            con.setDoOutput(true);
+            con.connect();
+            int x = con.getResponseCode();
+            InputStream inStream = con.getInputStream();
+            
+            JsonParser jsonParser = new JsonParser();
+            JsonObject jso = (JsonObject)jsonParser.parse(new InputStreamReader(inStream, "UTF-8"));
+            BookStore store = new BookStore();
+            store.setId((jso.get("id") != null ? jso.get("id").getAsLong() : null));
+            store.setServerId((jso.get("serverId") != null ? jso.get("serverId").getAsLong() : null));
+            store.setName(!jso.get("name").isJsonNull() ? jso.get("name").getAsString(): null);
+            store.setPhone(!jso.get("phone").isJsonNull() ? jso.get("phone").getAsString(): null);
+            store.setStreetAddress(!jso.get("streetAddress").isJsonNull() ? jso.get("streetAddress").getAsString(): null);
+            //Not including the List of books contained in the store
+            EntityModel<BookStore> entityModel = assembler.toModel(store);
+            entModelList.add(entityModel);
         }
         return CollectionModel.of(entModelList, linkTo(methodOn(BookStoreController.class).all()).withSelfRel());
     }
@@ -196,3 +213,13 @@ public class BookStoreController {
     }
 
 }
+
+//TODO Get self back after Post
+//TODO Avoid needing to delete each time on restart
+//TODO Fix getAll method
+//TODO! Speed up IntelliJ (Or get rid of it entirely)
+//TODO Redirects for Delete
+//TODO Redirects in BookController
+//TODO (Hub Issue) Repeat writing from same server/domain
+    //Or check self before sending a second thing
+
