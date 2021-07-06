@@ -74,13 +74,15 @@ public class BookController {
                 .stream()
                 .map(assembler::toModel)
                 .collect(Collectors.toList());
+        
         return CollectionModel.of(booksAll, linkTo(methodOn(BookController.class).all(storeID)).withSelfRel());
     }
 
     @PutMapping("/bookstores/{storeID}/books/{id}")
-    protected Book updateBook(@RequestBody Book newBook, @PathVariable Long id, @PathVariable Long storeID) {
-        checkStore(storeID);
-        Book updatedBook = repository.findById(id)
+    protected ResponseEntity updateBook(@RequestBody Book newBook, @PathVariable Long id, @PathVariable Long storeID) throws Exception{
+        try{
+            checkStore(storeID);
+            Book updatedBook = repository.findById(id)
                 .map(book -> {
                     if(newBook.getAuthor() != null) book.setAuthor(newBook.getAuthor());
                     if(newBook.getPrice() != -1)  book.setPrice(newBook.getPrice());
@@ -91,8 +93,15 @@ public class BookController {
                     return repository.save(book);
                 })
                 .orElseThrow(() -> new BookNotFoundException(id));
-        if(!updatedBook.getStoreID().equals(storeID))  throw new BookNotFoundException(id);
-        return updatedBook;
+            EntityModel<Book> entityModel = assembler.toModel(updatedBook);
+            return ResponseEntity.created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri()).body(entityModel);
+        }catch(BookStoreNotFoundException e){
+            if (this.map.containsKey(storeID)) {
+                return redirectWithId(id, storeID);
+            }else{
+                throw e;
+            }
+        }
     }
 
     @ResponseStatus(HttpStatus.NO_CONTENT)
