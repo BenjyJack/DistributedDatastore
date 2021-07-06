@@ -83,8 +83,7 @@ public class BookController {
             }else{
                 throw e;
             }
-        }
-        
+        }     
     }
 
     @PutMapping("/bookstores/{storeID}/books/{id}")
@@ -113,7 +112,6 @@ public class BookController {
         }
     }
 
-    // @ResponseStatus(HttpStatus.NO_CONTENT)
     @DeleteMapping("/bookstores/{storeID}/books/{id}")
     protected ResponseEntity deleteBook(@PathVariable Long id, @PathVariable Long storeID) throws Exception{
         try{
@@ -153,5 +151,4 @@ public class BookController {
         URI uri = new URI(builder.toUriString());
         return ResponseEntity.status(HttpStatus.PERMANENT_REDIRECT).location(uri).build();
     }
-
 }

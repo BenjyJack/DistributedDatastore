@@ -104,7 +104,6 @@ public class BookStoreController {
             store.setServerId(givenID);
             assembler.toModel(storeRepository.saveAndFlush(store));
         }
-
         this.map.put(idL, address);
     }
 
@@ -129,7 +128,6 @@ public class BookStoreController {
 
     @GetMapping("/bookstores")
     protected CollectionModel<EntityModel<BookStore>> all() throws Exception {
-
         List<EntityModel<BookStore>> entModelList = new ArrayList<>();
         for (Long id : this.map.keySet()) {
             URL url = new URL(this.map.get(id));
@@ -144,7 +142,6 @@ public class BookStoreController {
             JsonParser jsonParser = new JsonParser();
             JsonObject jso = (JsonObject)jsonParser.parse(new InputStreamReader(inStream, "UTF-8"));
             BookStore store = new BookStore();
-            //store.setId((jso.get("id") != null ? jso.get("id").getAsLong() : null));
             store.setServerId((jso.get("serverId") != null ? jso.get("serverId").getAsLong() : null));
             store.setName(!jso.get("name").isJsonNull() ? jso.get("name").getAsString(): null);
             store.setPhone(!jso.get("phone").isJsonNull() ? jso.get("phone").getAsString(): null);
@@ -168,7 +165,6 @@ public class BookStoreController {
                 .orElseThrow(() -> new BookStoreNotFoundException(storeID));
     }
 
-    //@ResponseStatus(HttpStatus.NO_CONTENT)
     @DeleteMapping("/bookstores/{storeID}")
     protected ResponseEntity deleteBookStore(@PathVariable Long storeID) throws Exception{
         try{
@@ -193,7 +189,6 @@ public class BookStoreController {
     }
 
     private EntityModel<BookStore> postToHub(BookStore bookStore) throws Exception {
-        //EntityModel<BookStore> store = assembler.toModel(storeRepository.save(bookStore));
         URL hubAddress = new URL("http://71.172.193.59:8080/hub");
         HttpURLConnection con = (HttpURLConnection) hubAddress.openConnection();
         con.setRequestMethod("POST");
@@ -217,21 +212,16 @@ public class BookStoreController {
                 response.append(responseLine.trim());
             }
             bookStore.setServerId(Long.parseLong(response.toString()));
-
-            //storeRepository.findAll().get(0).setServerId(Long.parseLong(response.toString()));
         }
         storeRepository.flush();
         return assembler.toModel(storeRepository.save(bookStore));
     }
-
 }
 
 //TODO Get self back after Post
 //TODO Avoid needing to delete each time on restart
 //TODO Fix getAll method
 //TODO! Speed up IntelliJ (Or get rid of it entirely)
-//TODO Redirects for Delete
-//TODO Redirects in BookController
 //TODO (Hub Issue) Repeat writing from same server/domain
     //Or check self before sending a second thing
 
