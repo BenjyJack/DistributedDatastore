@@ -50,11 +50,21 @@ public class BookController {
         }     
     }
 
-    @GetMapping("/bookstores/{storeID}/books/{id}")
-    protected EntityModel<Book> one(@PathVariable Long id, @PathVariable Long storeID) {
-        checkStore(storeID);
-        Book book = checkBook(id, storeID);
-        return assembler.toModel(book);
+    @GetMapping("/bookstores/{storeID}/books/{bookId}")
+    protected ResponseEntity one(@PathVariable Long bookId, @PathVariable Long storeID) throws Exception{
+        try{
+            checkStore(storeID);
+            Book book = checkBook(bookId, storeID);
+            EntityModel<Book> entityModel = assembler.toModel(book);
+            return ResponseEntity.created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
+            .body(entityModel);
+        }catch(BookStoreNotFoundException e){
+            if (this.map.containsKey(storeID)) {
+                return redirectWithId(bookId, storeID);
+            }else{
+                throw e;
+            }
+        }
     }
 
     @GetMapping("/bookstores/{storeID}/books")
@@ -105,8 +115,14 @@ public class BookController {
         return book;
     }
 
-    private ResponseEntity redirect(Long id) throws Exception{
-        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(this.map.get(id) + "/books");
+    private ResponseEntity redirect(Long storeId) throws Exception{
+        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(this.map.get(storeId) + "/books");
+        URI uri = new URI(builder.toUriString());
+        return ResponseEntity.status(HttpStatus.PERMANENT_REDIRECT).location(uri).build();
+    }
+
+    private ResponseEntity redirectWithId(Long bookId, Long storeId) throws Exception{
+        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(this.map.get(storeId) + "/books/" + bookId);
         URI uri = new URI(builder.toUriString());
         return ResponseEntity.status(HttpStatus.PERMANENT_REDIRECT).location(uri).build();
     }

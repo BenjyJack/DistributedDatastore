@@ -112,7 +112,7 @@ public class BookStoreController {
     protected ResponseEntity one(@PathVariable Long storeID) throws Exception {
         try{
             BookStore bookStore = storeRepository.findByServerId(storeID).orElseThrow(() -> new BookStoreNotFoundException(storeID));
-            EntityModel<BookStore> entityModel = assembler.toModel(storeRepository.save(bookStore));
+            EntityModel<BookStore> entityModel = assembler.toModel(bookStore);
             return ResponseEntity
                     .created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
                     .body(entityModel);
