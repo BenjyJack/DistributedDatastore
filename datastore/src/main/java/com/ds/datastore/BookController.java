@@ -104,12 +104,21 @@ public class BookController {
         }
     }
 
-    @ResponseStatus(HttpStatus.NO_CONTENT)
+    // @ResponseStatus(HttpStatus.NO_CONTENT)
     @DeleteMapping("/bookstores/{storeID}/books/{id}")
-    protected void deleteBook(@PathVariable Long id, @PathVariable Long storeID) {
-        checkStore(storeID);
-        checkBook(id, storeID);
-        repository.deleteById(id);
+    protected ResponseEntity deleteBook(@PathVariable Long id, @PathVariable Long storeID) throws Exception{
+        try{
+            checkStore(storeID);
+            checkBook(id, storeID);
+            repository.deleteById(id);
+            return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+        }catch(BookStoreNotFoundException e){
+            if (this.map.containsKey(storeID)) {
+                return redirectWithId(id, storeID);
+            }else{
+                throw e;
+            }
+        }
     }
 
     private BookStore checkStore(Long storeID){
