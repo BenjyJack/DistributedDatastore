@@ -68,14 +68,23 @@ public class BookController {
     }
 
     @GetMapping("/bookstores/{storeID}/books")
-    protected CollectionModel<EntityModel<Book>> all(@PathVariable Long storeID){
-        checkStore(storeID);
-        List<EntityModel<Book>> booksAll = repository.findByStoreID(storeID)
+    protected ResponseEntity all(@PathVariable Long storeID) throws Exception{
+        List<EntityModel<Book>> booksAll = null;
+        try {
+            checkStore(storeID);
+            booksAll = repository.findByStoreID(storeID)
                 .stream()
                 .map(assembler::toModel)
                 .collect(Collectors.toList());
+            return ResponseEntity.ok(CollectionModel.of(booksAll, linkTo(methodOn(BookController.class).all(storeID)).withSelfRel()));
+        }catch (BookStoreNotFoundException e) {
+            if (this.map.containsKey(storeID)) {
+                return redirect(storeID);
+            }else{
+                throw e;
+            }
+        }
         
-        return CollectionModel.of(booksAll, linkTo(methodOn(BookController.class).all(storeID)).withSelfRel());
     }
 
     @PutMapping("/bookstores/{storeID}/books/{id}")
