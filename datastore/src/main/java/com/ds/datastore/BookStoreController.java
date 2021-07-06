@@ -40,26 +40,26 @@ public class BookStoreController {
     private final BookStoreModelAssembler assembler;
     private final BookRepository bookRepository;
     private final BookStoreRepository storeRepository;
-
-    private HashMap<Long, String> serverMap;
+    private ServerMap map;
 
     @Value("${application.baseUrl}")
     private String url;
 
-    public BookStoreController(BookStoreModelAssembler assembler, BookRepository bookRepository, BookStoreRepository storeRepository) {
+    public BookStoreController(BookStoreModelAssembler assembler, BookRepository bookRepository, BookStoreRepository storeRepository, ServerMap map) {
         this.assembler = assembler;
         this.bookRepository = bookRepository;
         this.storeRepository = storeRepository;
+        this.map = map;
     }
 
     @PostConstruct
     private void restartChangedOrNew() throws Exception {
-        this.serverMap = reclaimMap();
+        this.map.setMap(reclaimMap());
         List<BookStore> bookStoreList = storeRepository.findAll();
         if(!bookStoreList.isEmpty()) {
             BookStore bookStore = bookStoreList.get(0);
             Long serverId = bookStore.getServerId();
-            String serverAddress = serverMap.get(serverId);
+            String serverAddress = this.map.get(serverId);
             if(!serverAddress.equals(url)) {
                 postToHub(bookStore);
             }
@@ -67,7 +67,7 @@ public class BookStoreController {
     }
 
     private HashMap<Long, String> reclaimMap() throws Exception {
-        URL url = new URL("http://71.187.80.134:8080/hub");
+        URL url = new URL("http://71.172.193.59:8080/hub");
         HttpURLConnection con = (HttpURLConnection) url.openConnection();
         con.setRequestMethod("GET");
         con.setRequestProperty("accept", "application/json");
@@ -86,6 +86,7 @@ public class BookStoreController {
     @PostMapping("/bookstores")
     protected ResponseEntity<EntityModel<BookStore>> newBookStore(@RequestBody BookStore bookStore) throws Exception {
         EntityModel<BookStore> entityModel = postToHub(bookStore);
+        System.out.println(map.getMap().toString());
         return ResponseEntity
                 .created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
                 .body(entityModel);
@@ -104,7 +105,7 @@ public class BookStoreController {
             assembler.toModel(storeRepository.saveAndFlush(store));
         }
 
-        this.serverMap.put(givenID, address);
+        this.map.put(idL, address);
     }
 
     @GetMapping("/bookstores/{storeID}")
@@ -116,14 +117,10 @@ public class BookStoreController {
                     .created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
                     .body(entityModel);
         }catch (BookStoreNotFoundException e){
-            if(serverMap.containsKey(storeID)){
-                UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(this.serverMap.get(storeID));
+            if(this.map.containsKey(storeID)){
+                UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(this.map.get(storeID));
                 URI uri = new URI(builder.toUriString());
                 return ResponseEntity.status(HttpStatus.PERMANENT_REDIRECT).location(uri).build();
-
-
-                /*URI uri = new URI(this.serverMap.get(storeID));
-                return ResponseEntity.status(HttpStatus.PERMANENT_REDIRECT).location(uri).build();*/
             }else{
                 throw e;
             }
@@ -134,8 +131,8 @@ public class BookStoreController {
     protected CollectionModel<EntityModel<BookStore>> all() throws Exception {
 
         List<EntityModel<BookStore>> entModelList = new ArrayList<>();
-        for (Long id : this.serverMap.keySet()) {
-            URL url = new URL(this.serverMap.get(id));
+        for (Long id : this.map.keySet()) {
+            URL url = new URL(this.map.get(id));
             HttpURLConnection con = (HttpURLConnection) url.openConnection();
             con.setRequestMethod("GET");
             con.setRequestProperty("accept", "application/json");
@@ -147,7 +144,7 @@ public class BookStoreController {
             JsonParser jsonParser = new JsonParser();
             JsonObject jso = (JsonObject)jsonParser.parse(new InputStreamReader(inStream, "UTF-8"));
             BookStore store = new BookStore();
-            store.setId((jso.get("id") != null ? jso.get("id").getAsLong() : null));
+            //store.setId((jso.get("id") != null ? jso.get("id").getAsLong() : null));
             store.setServerId((jso.get("serverId") != null ? jso.get("serverId").getAsLong() : null));
             store.setName(!jso.get("name").isJsonNull() ? jso.get("name").getAsString(): null);
             store.setPhone(!jso.get("phone").isJsonNull() ? jso.get("phone").getAsString(): null);
@@ -171,20 +168,33 @@ public class BookStoreController {
                 .orElseThrow(() -> new BookStoreNotFoundException(storeID));
     }
 
-    @ResponseStatus(HttpStatus.NO_CONTENT)
+    //@ResponseStatus(HttpStatus.NO_CONTENT)
     @DeleteMapping("/bookstores/{storeID}")
-    protected void deleteBookStore(@PathVariable Long storeID) {
-        storeRepository.findById(storeID).orElseThrow(() -> new BookStoreNotFoundException(storeID));
-        storeRepository.deleteById(storeID);
-        List<Book> books = bookRepository.findByStoreID(storeID);
-        for (Book book : books) {
-            bookRepository.delete(book);
+    protected ResponseEntity deleteBookStore(@PathVariable Long storeID) throws Exception{
+        try{
+            storeRepository.findById(storeID).orElseThrow(() -> new BookStoreNotFoundException(storeID));
+            storeRepository.deleteById(storeID);
+            List<Book> books = bookRepository.findByStoreID(storeID);
+            for (Book book : books) {
+                bookRepository.delete(book);
+            }
+            return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+        }catch (BookStoreNotFoundException e){
+            if(this.map.containsKey(storeID)){
+                String location = this.map.get(storeID);
+                URL url = new URL(location);
+                UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(location);
+                URI uri = new URI(builder.toUriString());
+                return ResponseEntity.status(HttpStatus.PERMANENT_REDIRECT).location(uri).build();
+            }else{
+                throw e;
+            }
         }
     }
 
     private EntityModel<BookStore> postToHub(BookStore bookStore) throws Exception {
-        EntityModel<BookStore> store = assembler.toModel(storeRepository.save(bookStore));
-        URL hubAddress = new URL("http://71.187.80.134:8080/hub");
+        //EntityModel<BookStore> store = assembler.toModel(storeRepository.save(bookStore));
+        URL hubAddress = new URL("http://71.172.193.59:8080/hub");
         HttpURLConnection con = (HttpURLConnection) hubAddress.openConnection();
         con.setRequestMethod("POST");
         con.setRequestProperty("Content-Type", "application/json");
@@ -206,10 +216,12 @@ public class BookStoreController {
             while ((responseLine = br.readLine()) != null) {
                 response.append(responseLine.trim());
             }
-            storeRepository.findAll().get(0).setServerId(Long.parseLong(response.toString()));
+            bookStore.setServerId(Long.parseLong(response.toString()));
+
+            //storeRepository.findAll().get(0).setServerId(Long.parseLong(response.toString()));
         }
         storeRepository.flush();
-        return assembler.toModel(storeRepository.findAll().get(0));
+        return assembler.toModel(storeRepository.save(bookStore));
     }
 
 }

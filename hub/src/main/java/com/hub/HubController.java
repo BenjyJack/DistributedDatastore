@@ -38,8 +38,6 @@ public class HubController {
     @PostMapping("/hub")
     protected Long addServer(@RequestBody String json) throws Exception {
         String address = parseAddressFromJsonString(json);
-
-        //TODO: למעשה, do we really need to set the server address twice and save twice?
         HubEntry server = new HubEntry();
         server.setServerAddress(address);
         repository.save(server);

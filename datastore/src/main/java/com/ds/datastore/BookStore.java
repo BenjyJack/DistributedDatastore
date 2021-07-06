@@ -7,11 +7,12 @@ import java.util.ArrayList;
 @Entity
 public class BookStore {
 
+    
+    // @Column(name = "Id", nullable = false)
+    // @GeneratedValue
+    // private long id;
+   
     @Id
-    @Column(name = "Id", nullable = false)
-    @GeneratedValue
-    private long id;
-
     @Column(name = "ServerID")
     private Long serverId;
     @Column(name = "Name")
@@ -24,12 +25,12 @@ public class BookStore {
     @OneToMany(mappedBy = "store", cascade = CascadeType.ALL, orphanRemoval = true)
     List<Book> books = new ArrayList<>();
 
-    public long getId() {
-        return id;
-    }
-    public void setId(long id) {
-        this.id = id;
-    }
+    // public long getId() {
+    //     return id;
+    // }
+    // public void setId(long id) {
+    //     this.id = id;
+    // }
 
     public String getName(){
         return name;

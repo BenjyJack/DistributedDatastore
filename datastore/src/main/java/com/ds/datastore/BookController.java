@@ -9,7 +9,9 @@ import org.springframework.hateoas.IanaLinkRelations;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URI;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -19,22 +21,33 @@ public class BookController {
     private final BookRepository repository;
     private final BookModelAssembler assembler;
     private final BookStoreRepository storeRepository;
+    private ServerMap map;
 
-    public BookController(BookRepository repository, BookModelAssembler assembler, BookStoreRepository storeRepository) {
+    public BookController(BookRepository repository, BookModelAssembler assembler, BookStoreRepository storeRepository, ServerMap map) {
         this.repository = repository;
         this.assembler = assembler;
         this.storeRepository = storeRepository;
+        this.map = map;
     }
 
     @PostMapping("/bookstores/{storeID}/books")
-    protected ResponseEntity<EntityModel<Book>> newBook(@RequestBody Book book, @PathVariable Long storeID){
-        BookStore store = checkStore(storeID);
-        book.setStoreID(storeID);
-        book.setStore(store);
-        EntityModel<Book> entityModel = assembler.toModel(repository.save(book));
-        return ResponseEntity
+    protected ResponseEntity newBook(@RequestBody Book book, @PathVariable Long storeID) throws Exception{
+        try{
+            BookStore store = checkStore(storeID);
+            book.setStoreID(storeID);
+            book.setStore(store);
+            EntityModel<Book> entityModel = assembler.toModel(repository.save(book));
+            System.out.println(map.getMap().toString());
+            return ResponseEntity
                 .created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
                 .body(entityModel);
+        }catch(BookStoreNotFoundException e){
+            if (this.map.containsKey(storeID)) {
+                return redirect(storeID);
+            }else{
+                throw e;
+            }
+        }     
     }
 
     @GetMapping("/bookstores/{storeID}/books/{id}")
@@ -90,6 +103,12 @@ public class BookController {
             throw new BookNotFoundException(id);
         }
         return book;
+    }
+
+    private ResponseEntity redirect(Long id) throws Exception{
+        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(this.map.get(id) + "/books");
+        URI uri = new URI(builder.toUriString());
+        return ResponseEntity.status(HttpStatus.PERMANENT_REDIRECT).location(uri).build();
     }
 
 }
