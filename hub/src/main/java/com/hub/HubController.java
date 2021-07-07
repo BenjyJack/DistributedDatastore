@@ -38,6 +38,8 @@ public class HubController {
     @PostMapping("/hub")
     protected Long addServer(@RequestBody String json) throws Exception {
         String address = parseAddressFromJsonString(json);
+
+        //TODO: למעשה, do we really need to set the server address twice and save twice?
         HubEntry server = new HubEntry();
         server.setServerAddress(address);
         repository.save(server);
@@ -47,8 +49,8 @@ public class HubController {
 
         Long serverId = server.getId();
         String newServerInfo = storeServerInfoInString(serverId, address);
-        addNewServerToAllServers(newServerInfo);
         this.hub.addServer(serverId, address);
+        addNewServerToAllServers(newServerInfo);
         return serverId;
     }
 
@@ -82,6 +84,29 @@ public class HubController {
             con.setDoOutput(true);
             try(OutputStream os = con.getOutputStream()) {
                 byte[] input = serverInfo.getBytes(StandardCharsets.UTF_8);
+                os.write(input, 0, input.length);
+            }
+            int y = con.getResponseCode();
+            System.out.println(y);
+        }
+    }
+    @DeleteMapping("/hub/{serverID}")
+    protected void removeServerFromNetwork(@PathVariable Long serverID) throws Exception{
+        if(!this.hub.removeServer(serverID)) return;
+        repository.deleteById(serverID);
+        for (Long id : this.hub.getMap().keySet()) {
+            URL url = new URL(this.hub.getAddress(id));
+            url = new URL("http://" + url.getHost() + "/bookstores");
+            HttpURLConnection con = (HttpURLConnection) url.openConnection();
+            con.setRequestMethod("DELETE");
+            con.setRequestProperty("Content-Type", "application/json");
+            con.setDoOutput(true);
+            Gson gson = new Gson();
+            JsonObject json = new JsonObject();
+            json.addProperty("id", serverID);
+            String str = gson.toJson(json);
+            try(OutputStream os = con.getOutputStream()) {
+                byte[] input =str.getBytes(StandardCharsets.UTF_8);
                 os.write(input, 0, input.length);
             }
             int y = con.getResponseCode();

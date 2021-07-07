@@ -11,6 +11,9 @@ public class ServerHub {
     public void addServer(Long id, String address){
         serverToHTTP.put(id, address);
     }
+    public boolean removeServer(Long id){
+        return serverToHTTP.remove(id) != null;
+    }
     public String getAddress(Long id){
         return serverToHTTP.get(id);
     }
