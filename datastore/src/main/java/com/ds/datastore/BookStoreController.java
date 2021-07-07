@@ -41,6 +41,7 @@ public class BookStoreController {
     private final BookRepository bookRepository;
     private final BookStoreRepository storeRepository;
     private ServerMap map;
+    private Long id = null;
 
     @Value("${application.baseUrl}")
     private String url;
@@ -58,9 +59,9 @@ public class BookStoreController {
         List<BookStore> bookStoreList = storeRepository.findAll();
         if(!bookStoreList.isEmpty()) {
             BookStore bookStore = bookStoreList.get(0);
-            Long serverId = bookStore.getServerId();
-            String serverAddress = this.map.get(serverId);
-            if(!serverAddress.equals(url + "/bookstores/" + serverId)) {
+            this.id = bookStore.getServerId();
+            String serverAddress = this.map.get(this.id);
+            if(!serverAddress.equals(url + "/bookstores/" + this.id)) {
                 postToHub(bookStore);
             }
         }
@@ -85,7 +86,7 @@ public class BookStoreController {
 
     @PostMapping("/bookstores")
     protected ResponseEntity<EntityModel<BookStore>> newBookStore(@RequestBody BookStore bookStore) throws Exception {
-        if (!this.storeRepository.findAll().isEmpty()) {
+        if (this.id != null) {
             return ResponseEntity.status(HttpStatus.ALREADY_REPORTED).build();
         }
         EntityModel<BookStore> entityModel = postToHub(bookStore);
@@ -100,12 +101,6 @@ public class BookStoreController {
         JsonObject jso = new JsonParser().parse(json).getAsJsonObject();
         Long givenID = jso.get("id").getAsLong();
         String address = jso.get("address").getAsString();
-        Long idL = Long.parseLong(id);
-        if(idL.equals(givenID)){
-            BookStore store = this.storeRepository.findAll().get(0);
-            store.setServerId(givenID);
-            assembler.toModel(storeRepository.saveAndFlush(store));
-        }
         this.map.put(givenID, address);
     }
 
@@ -225,6 +220,7 @@ public class BookStoreController {
                 response.append(responseLine.trim());
             }
             bookStore.setServerId(Long.parseLong(response.toString()));
+            this.id = bookStore.getServerId();
         }
         storeRepository.flush();
         return assembler.toModel(storeRepository.save(bookStore));

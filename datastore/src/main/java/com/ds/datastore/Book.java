@@ -41,7 +41,6 @@ public class Book {
     }
     public void setStore(BookStore store) {
         this.store = store;
-        //this.storeID = store.getId();
     }
 
     public String getAuthor() {
