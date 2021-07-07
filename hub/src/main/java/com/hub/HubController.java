@@ -40,6 +40,7 @@ public class HubController {
         String address = parseAddressFromJsonString(json);
 
         HubEntry server = new HubEntry();
+        server.setServerAddress(address);
         repository.save(server);
         address = address + server.getId();
         server.setServerAddress(address);
