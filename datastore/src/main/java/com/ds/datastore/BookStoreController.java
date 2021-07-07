@@ -107,7 +107,7 @@ public class BookStoreController {
             store.setServerId(givenID);
             assembler.toModel(storeRepository.saveAndFlush(store));
         }
-        this.map.put(idL, address);
+        this.map.put(givenID, address);
     }
 
     @GetMapping("/bookstores/{storeID}")
