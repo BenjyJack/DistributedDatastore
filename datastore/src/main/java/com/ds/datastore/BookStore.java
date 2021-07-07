@@ -8,13 +8,13 @@ import java.util.ArrayList;
 public class BookStore {
 
     @Id
-    @Column(name = "ServerID")
+    @Column(name = "server_id")
     private Long serverId;
-    @Column(name = "Name")
+    @Column(name = "name")
     private String name = "";
-    @Column(name = "Phone")
+    @Column(name = "phone")
     private String phone = "";
-    @Column(name = "Address")
+    @Column(name = "address")
     private String streetAddress = "";
 
     @OneToMany(mappedBy = "store", cascade = CascadeType.ALL, orphanRemoval = true)

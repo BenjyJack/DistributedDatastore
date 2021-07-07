@@ -105,7 +105,7 @@ public class BookStoreController {
     }
 
     @GetMapping("/bookstores/{storeID}")
-    protected ResponseEntity one(@PathVariable Long storeID) throws Exception {
+    protected ResponseEntity<EntityModel<BookStore>> one(@PathVariable Long storeID) throws Exception {
         try{
             BookStore bookStore = storeRepository.findByServerId(storeID).orElseThrow(() -> new BookStoreNotFoundException(storeID));
             EntityModel<BookStore> entityModel = assembler.toModel(bookStore);
@@ -163,7 +163,7 @@ public class BookStoreController {
     }
 
     @DeleteMapping("/bookstores/{storeID}")
-    protected ResponseEntity deleteBookStore(@PathVariable Long storeID) throws Exception{
+    protected ResponseEntity<EntityModel<BookStore>> deleteBookStore(@PathVariable Long storeID) throws Exception{
         try{
             storeRepository.findById(storeID).orElseThrow(() -> new BookStoreNotFoundException(storeID));
             storeRepository.deleteById(storeID);

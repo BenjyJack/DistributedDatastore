@@ -6,11 +6,11 @@ import javax.persistence.*;
 public class HubEntry {
 
     @Id
-    @Column(name = "Id", nullable = false)
+    @Column(name = "id", nullable = false)
     @GeneratedValue(strategy = GenerationType.AUTO)
     private long id;
 
-    @Column(name = "ServerAddress", nullable = false)
+    @Column(name = "server_address", nullable = false)
     private String serverAddress;
 
     public String getServerAddress() {

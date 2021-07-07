@@ -31,13 +31,12 @@ public class BookController {
     }
 
     @PostMapping("/bookstores/{storeID}/books")
-    protected ResponseEntity newBook(@RequestBody Book book, @PathVariable Long storeID) throws Exception{
+    protected ResponseEntity<EntityModel<Book>> newBook(@RequestBody Book book, @PathVariable Long storeID) throws Exception{
         try{
             BookStore store = checkStore(storeID);
             book.setStoreID(storeID);
             book.setStore(store);
             EntityModel<Book> entityModel = assembler.toModel(repository.save(book));
-            System.out.println(map.getMap().toString());
             return ResponseEntity
                 .created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
                 .body(entityModel);
@@ -51,7 +50,7 @@ public class BookController {
     }
 
     @GetMapping("/bookstores/{storeID}/books/{bookId}")
-    protected ResponseEntity one(@PathVariable Long bookId, @PathVariable Long storeID) throws Exception{
+    protected ResponseEntity<EntityModel<Book>> one(@PathVariable Long bookId, @PathVariable Long storeID) throws Exception{
         try{
             checkStore(storeID);
             Book book = checkBook(bookId, storeID);
@@ -68,7 +67,7 @@ public class BookController {
     }
 
     @GetMapping("/bookstores/{storeID}/books")
-    protected ResponseEntity all(@PathVariable Long storeID) throws Exception{
+    protected ResponseEntity<CollectionModel<EntityModel<Book>>> all(@PathVariable Long storeID) throws Exception{
         List<EntityModel<Book>> booksAll = null;
         try {
             checkStore(storeID);
@@ -79,7 +78,9 @@ public class BookController {
             return ResponseEntity.ok(CollectionModel.of(booksAll, linkTo(methodOn(BookController.class).all(storeID)).withSelfRel()));
         }catch (BookStoreNotFoundException e) {
             if (this.map.containsKey(storeID)) {
-                return redirect(storeID);
+                UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(this.map.get(storeID) + "/books");
+                URI uri = new URI(builder.toUriString());
+                return ResponseEntity.status(HttpStatus.PERMANENT_REDIRECT).location(uri).build();
             }else{
                 throw e;
             }
@@ -87,7 +88,7 @@ public class BookController {
     }
 
     @PutMapping("/bookstores/{storeID}/books/{id}")
-    protected ResponseEntity updateBook(@RequestBody Book newBook, @PathVariable Long id, @PathVariable Long storeID) throws Exception{
+    protected ResponseEntity<EntityModel<Book>> updateBook(@RequestBody Book newBook, @PathVariable Long id, @PathVariable Long storeID) throws Exception{
         try{
             checkStore(storeID);
             Book updatedBook = repository.findById(id)
@@ -113,7 +114,7 @@ public class BookController {
     }
 
     @DeleteMapping("/bookstores/{storeID}/books/{id}")
-    protected ResponseEntity deleteBook(@PathVariable Long id, @PathVariable Long storeID) throws Exception{
+    protected ResponseEntity<EntityModel<Book>> deleteBook(@PathVariable Long id, @PathVariable Long storeID) throws Exception{
         try{
             checkStore(storeID);
             checkBook(id, storeID);
@@ -140,13 +141,13 @@ public class BookController {
         return book;
     }
 
-    private ResponseEntity redirect(Long storeId) throws Exception{
+    private ResponseEntity<EntityModel<Book>> redirect(Long storeId) throws Exception{
         UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(this.map.get(storeId) + "/books");
         URI uri = new URI(builder.toUriString());
         return ResponseEntity.status(HttpStatus.PERMANENT_REDIRECT).location(uri).build();
     }
 
-    private ResponseEntity redirectWithId(Long bookId, Long storeId) throws Exception{
+    private ResponseEntity<EntityModel<Book>> redirectWithId(Long bookId, Long storeId) throws Exception{
         UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(this.map.get(storeId) + "/books/" + bookId);
         URI uri = new URI(builder.toUriString());
         return ResponseEntity.status(HttpStatus.PERMANENT_REDIRECT).location(uri).build();
