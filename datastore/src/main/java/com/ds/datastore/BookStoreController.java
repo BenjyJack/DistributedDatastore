@@ -60,7 +60,7 @@ public class BookStoreController {
             BookStore bookStore = bookStoreList.get(0);
             Long serverId = bookStore.getServerId();
             String serverAddress = this.map.get(serverId);
-            if(!serverAddress.equals(url)) {
+            if(!serverAddress.equals(url + "/bookstores/" + serverId)) {
                 postToHub(bookStore);
             }
         }
@@ -85,6 +85,9 @@ public class BookStoreController {
 
     @PostMapping("/bookstores")
     protected ResponseEntity<EntityModel<BookStore>> newBookStore(@RequestBody BookStore bookStore) throws Exception {
+        if (!this.storeRepository.findAll().isEmpty()) {
+            return ResponseEntity.status(HttpStatus.ALREADY_REPORTED).build();
+        }
         EntityModel<BookStore> entityModel = postToHub(bookStore);
         System.out.println(map.getMap().toString());
         return ResponseEntity
