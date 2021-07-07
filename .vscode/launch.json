@@ -8,14 +8,16 @@
             "type": "java",
             "name": "Launch Current File",
             "request": "launch",
-            "mainClass": "${file}"
+            "mainClass": "${file}",
+            "env": {"ADDRESS":"http://c13422fcf88f.ngrok.io"}
         },
         {
             "type": "java",
             "name": "Launch DatastoreApplication",
             "request": "launch",
             "mainClass": "com.ds.datastore.DatastoreApplication",
-            "projectName": "datastore"
+            "projectName": "datastore",
+            "env": {"ADDRESS":"http://c13422fcf88f.ngrok.io"}
         },
         {
             "type": "java",
