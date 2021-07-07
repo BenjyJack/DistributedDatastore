@@ -172,6 +172,7 @@ public class BookStoreController {
         try{
             storeRepository.findById(storeID).orElseThrow(() -> new BookStoreNotFoundException(storeID));
             storeRepository.deleteById(storeID);
+            this.map.remove(storeID);
             URL url = new URL("http://71.172.193.59:8080/hub/" + storeID);
             HttpURLConnection con = (HttpURLConnection) url.openConnection();
             con.setRequestMethod("DELETE");
@@ -179,7 +180,6 @@ public class BookStoreController {
             con.setDoOutput(true);
             con.connect();
             int x = con.getResponseCode();
-
             List<Book> books = bookRepository.findByStoreID(storeID);
             for (Book book : books) {
                 bookRepository.delete(book);
