@@ -39,9 +39,7 @@ public class HubController {
     protected Long addServer(@RequestBody String json) throws Exception {
         String address = parseAddressFromJsonString(json);
 
-        //TODO: למעשה, do we really need to set the server address twice and save twice?
         HubEntry server = new HubEntry();
-        server.setServerAddress(address);
         repository.save(server);
         address = address + server.getId();
         server.setServerAddress(address);
@@ -87,16 +85,26 @@ public class HubController {
                 os.write(input, 0, input.length);
             }
             int y = con.getResponseCode();
-            System.out.println(y);
         }
     }
+
+    @PutMapping("/hub")
+    protected void updateAddress(@RequestBody String json) throws Exception {
+        JsonParser parser = new JsonParser();
+        JsonObject jsonObject = parser.parse(json).getAsJsonObject();
+        Long id = jsonObject.get("id").getAsLong();
+        String address = jsonObject.get("address").getAsString();
+        this.hub.addServer(id, address);
+        addNewServerToAllServers(json);
+    }
+
     @DeleteMapping("/hub/{serverID}")
     protected void removeServerFromNetwork(@PathVariable Long serverID) throws Exception{
         if(!this.hub.removeServer(serverID)) return;
         repository.deleteById(serverID);
         for (Long id : this.hub.getMap().keySet()) {
             URL url = new URL(this.hub.getAddress(id));
-            url = new URL("http://" + url.getHost() + "/bookstores");
+            url = new URL("http://" + url.getHost() + "/bookstores/map");
             HttpURLConnection con = (HttpURLConnection) url.openConnection();
             con.setRequestMethod("DELETE");
             con.setRequestProperty("Content-Type", "application/json");

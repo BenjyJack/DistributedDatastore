@@ -3,10 +3,7 @@ package com.ds.datastore;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
-import java.io.BufferedReader;
-import java.io.DataOutputStream;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.URI;
@@ -62,9 +59,29 @@ public class BookStoreController {
             this.id = bookStore.getServerId();
             String serverAddress = this.map.get(this.id);
             if(!serverAddress.equals(url + "/bookstores/" + this.id)) {
-                postToHub(bookStore);
+                putToHub();
             }
         }
+    }
+
+    private void putToHub() throws Exception{
+        URL hubAddress = new URL("http://71.172.193.59:8080/hub");
+        HttpURLConnection con = (HttpURLConnection) hubAddress.openConnection();
+        con.setRequestMethod("PUT");
+        con.setRequestProperty("Content-Type", "application/json");
+        con.setDoOutput(true);
+        con.connect();
+        DataOutputStream out = new DataOutputStream(con.getOutputStream());
+        Gson gson = new Gson();
+        JsonObject json = new JsonObject();
+        json.addProperty("id", this.id);
+        json.addProperty("address", this.url + "/bookstores/" + this.id);
+        String str = gson.toJson(json);
+        try(OutputStream os = con.getOutputStream()) {
+            byte[] input = str.getBytes(StandardCharsets.UTF_8);
+            os.write(input, 0, input.length);
+        }
+        int y = con.getResponseCode();
     }
 
     private HashMap<Long, String> reclaimMap() throws Exception {
@@ -189,7 +206,7 @@ public class BookStoreController {
         }
     }
 
-    @DeleteMapping("/bookstores")
+    @DeleteMapping("/bookstores/map")
     protected void deleteFromMap(@RequestBody String json){
         JsonObject jso = new JsonParser().parse(json).getAsJsonObject();
         Long id = jso.get("id").getAsLong();
