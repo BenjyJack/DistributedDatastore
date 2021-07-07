@@ -101,7 +101,6 @@ public class BookStoreController {
         Long givenID = jso.get("id").getAsLong();
         String address = jso.get("address").getAsString();
         Long idL = Long.parseLong(id);
-
         if(idL.equals(givenID)){
             BookStore store = this.storeRepository.findAll().get(0);
             store.setServerId(givenID);
@@ -173,6 +172,14 @@ public class BookStoreController {
         try{
             storeRepository.findById(storeID).orElseThrow(() -> new BookStoreNotFoundException(storeID));
             storeRepository.deleteById(storeID);
+            URL url = new URL("http://71.172.193.59:8080/hub/" + storeID);
+            HttpURLConnection con = (HttpURLConnection) url.openConnection();
+            con.setRequestMethod("DELETE");
+            con.setRequestProperty("Content-Type", "application/json");
+            con.setDoOutput(true);
+            con.connect();
+            int x = con.getResponseCode();
+
             List<Book> books = bookRepository.findByStoreID(storeID);
             for (Book book : books) {
                 bookRepository.delete(book);
@@ -180,15 +187,18 @@ public class BookStoreController {
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
         }catch (BookStoreNotFoundException e){
             if(this.map.containsKey(storeID)){
-                String location = this.map.get(storeID);
-                URL url = new URL(location);
-                UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(location);
-                URI uri = new URI(builder.toUriString());
-                return ResponseEntity.status(HttpStatus.PERMANENT_REDIRECT).location(uri).build();
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }else{
                 throw e;
             }
         }
+    }
+
+    @DeleteMapping("/bookstores")
+    protected void deleteFromMap(@RequestBody String json){
+        JsonObject jso = new JsonParser().parse(json).getAsJsonObject();
+        Long id = jso.get("id").getAsLong();
+        this.map.remove(id);
     }
 
     private EntityModel<BookStore> postToHub(BookStore bookStore) throws Exception {
@@ -221,10 +231,5 @@ public class BookStoreController {
     }
 }
 
-//TODO Get self back after Post
-//TODO Avoid needing to delete each time on restart
 //TODO Fix getAll method
 //TODO! Speed up IntelliJ (Or get rid of it entirely)
-//TODO (Hub Issue) Repeat writing from same server/domain
-    //Or check self before sending a second thing
-
