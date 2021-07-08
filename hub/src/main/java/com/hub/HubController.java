@@ -86,6 +86,7 @@ public class HubController {
                 os.write(input, 0, input.length);
             }
             int y = con.getResponseCode();
+            con.disconnect();
         }
     }
 
@@ -120,6 +121,7 @@ public class HubController {
             }
             int y = con.getResponseCode();
             System.out.println(y);
+            con.disconnect();
         }
     }
 
