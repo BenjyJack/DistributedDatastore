@@ -68,7 +68,6 @@ public class BookStoreController {
 
     private void registerWithHub() throws Exception {
         HttpURLConnection con = createConnection(hubUrl, "PUT");
-        //DataOutputStream out = new DataOutputStream(con.getOutputStream());
         Gson gson = new Gson();
         JsonObject json = new JsonObject();
         json.addProperty("id", this.id);
@@ -185,11 +184,9 @@ public class BookStoreController {
             }
             HttpURLConnection con = createConnection(address);
             JsonObject jso = getJsonObject(con);
-
             Gson gson = new Gson();
             Type collectionType = new TypeToken<List<Book>>(){}.getType();
             List<Book> books = gson.fromJson(jso.get("books"), collectionType);
-
             for(Book book : books) {
                 entModelList.add(bookModelAssembler.toModel(book));
             }
