@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -67,15 +68,18 @@ public class BookController {
     }
 
     @GetMapping("/bookstores/{storeID}/books")
-    protected ResponseEntity<CollectionModel<EntityModel<Book>>> all(@PathVariable Long storeID) throws Exception{
+    protected ResponseEntity<CollectionModel<EntityModel<Book>>> all(@PathVariable Long storeID, @RequestParam(required = false) List<String> id) throws Exception{
         List<EntityModel<Book>> booksAll = null;
         try {
             checkStore(storeID);
+            if(id != null) {
+                return getAllSpecific(storeID, id);
+            }
             booksAll = repository.findByStoreID(storeID)
                 .stream()
                 .map(assembler::toModel)
                 .collect(Collectors.toList());
-            return ResponseEntity.ok(CollectionModel.of(booksAll, linkTo(methodOn(BookController.class).all(storeID)).withSelfRel()));
+            return ResponseEntity.ok(CollectionModel.of(booksAll, linkTo(methodOn(BookController.class).all(storeID, null)).withSelfRel()));
         }catch (BookStoreNotFoundException e) {
             if (this.map.containsKey(storeID)) {
                 UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(this.map.get(storeID) + "/books");
@@ -85,6 +89,15 @@ public class BookController {
                 throw e;
             }
         }     
+    }
+
+    private ResponseEntity<CollectionModel<EntityModel<Book>>> getAllSpecific(Long storeID, List<String> id) throws Exception {
+        List<EntityModel<Book>> entModelList = new ArrayList<>();
+        for(String bookId : id) {
+            Long parsedId = Long.parseLong(bookId);
+            entModelList.add(assembler.toModel(repository.findById(parsedId).get()));
+        }
+        return ResponseEntity.ok(CollectionModel.of(entModelList, linkTo(methodOn(BookController.class).all(storeID, null)).withSelfRel()));
     }
 
     @PutMapping("/bookstores/{storeID}/books/{id}")
