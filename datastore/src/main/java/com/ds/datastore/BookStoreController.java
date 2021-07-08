@@ -5,10 +5,7 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 import java.io.*;
 import java.lang.reflect.Type;
-import java.net.HttpURLConnection;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
+import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -144,10 +141,13 @@ public class BookStoreController {
     }
 
     @GetMapping("/bookstores")
-    protected CollectionModel<EntityModel<BookStore>> all() throws Exception {
+    protected CollectionModel<EntityModel<BookStore>> all(@RequestParam(required = false) List<String> id) throws Exception {
+        if(id != null) {
+            return getAllSpecific(id);
+        }
         List<EntityModel<BookStore>> entModelList = new ArrayList<>();
-        for (Long id : this.map.keySet()) {
-            URL url = new URL(this.map.get(id));
+        for (Long storeId : this.map.keySet()) {
+            URL url = new URL(this.map.get(storeId));
             HttpURLConnection con = (HttpURLConnection) url.openConnection();
             con.setRequestMethod("GET");
             con.setRequestProperty("accept", "application/json");
@@ -157,7 +157,7 @@ public class BookStoreController {
             InputStream inStream = con.getInputStream();
             
             JsonParser jsonParser = new JsonParser();
-            JsonObject jso = (JsonObject)jsonParser.parse(new InputStreamReader(inStream, "UTF-8"));
+            JsonObject jso = (JsonObject)jsonParser.parse(new InputStreamReader(inStream, StandardCharsets.UTF_8));
             BookStore store = new BookStore();
             store.setServerId((jso.get("serverId") != null ? jso.get("serverId").getAsLong() : null));
             store.setName(!jso.get("name").isJsonNull() ? jso.get("name").getAsString(): null);
@@ -167,7 +167,34 @@ public class BookStoreController {
             EntityModel<BookStore> entityModel = assembler.toModel(store);
             entModelList.add(entityModel);
         }
-        return CollectionModel.of(entModelList, linkTo(methodOn(BookStoreController.class).all()).withSelfRel());
+        return CollectionModel.of(entModelList, linkTo(methodOn(BookStoreController.class).all(null)).withSelfRel());
+    }
+
+    private CollectionModel<EntityModel<BookStore>> getAllSpecific(List<String> storeIDs) throws Exception {
+        List<EntityModel<BookStore>> entModelList = new ArrayList<>();
+        for(String storeID : storeIDs) {
+            Long id = Long.parseLong(storeID);
+            URL url = new URL(this.map.get(id));
+            HttpURLConnection con = (HttpURLConnection) url.openConnection();
+            con.setRequestMethod("GET");
+            con.setRequestProperty("accept", "application/json");
+            con.setDoOutput(true);
+            con.connect();
+            int x = con.getResponseCode();
+            InputStream inStream = con.getInputStream();
+
+            JsonParser jsonParser = new JsonParser();
+            JsonObject jso = (JsonObject) jsonParser.parse(new InputStreamReader(inStream, StandardCharsets.UTF_8));
+            BookStore store = new BookStore();
+            store.setServerId((jso.get("serverId") != null ? jso.get("serverId").getAsLong() : null));
+            store.setName(!jso.get("name").isJsonNull() ? jso.get("name").getAsString() : null);
+            store.setPhone(!jso.get("phone").isJsonNull() ? jso.get("phone").getAsString() : null);
+            store.setStreetAddress(!jso.get("streetAddress").isJsonNull() ? jso.get("streetAddress").getAsString() : null);
+            //Not including the List of books contained in the store
+            EntityModel<BookStore> entityModel = assembler.toModel(store);
+            entModelList.add(entityModel);
+        }
+        return CollectionModel.of(entModelList, linkTo(methodOn(BookStoreController.class).all(null)).withSelfRel());
     }
 
     @PutMapping("/bookstores/{storeID}")
