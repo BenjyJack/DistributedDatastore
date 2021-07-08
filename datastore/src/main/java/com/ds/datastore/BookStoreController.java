@@ -62,13 +62,13 @@ public class BookStoreController {
             this.id = bookStore.getServerId();
             String serverAddress = this.map.get(this.id);
             if(!serverAddress.equals(url + "/bookstores/" + this.id)) {
-                putToHub();
+                RegisterWithHub();
             }
         }
     }
 
-    private void putToHub() throws Exception{
-        URL hubAddress = new URL("http://71.172.193.59:8080/hub");
+    private void RegisterWithHub() throws Exception{
+        URL hubAddress = new URL(this.hubUrl);
         HttpURLConnection con = (HttpURLConnection) hubAddress.openConnection();
         con.setRequestMethod("PUT");
         con.setRequestProperty("Content-Type", "application/json");
