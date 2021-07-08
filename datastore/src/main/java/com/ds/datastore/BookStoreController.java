@@ -188,7 +188,7 @@ public class BookStoreController {
             storeRepository.findById(storeID).orElseThrow(() -> new BookStoreNotFoundException(storeID));
             storeRepository.deleteById(storeID);
             this.map.remove(storeID);
-            URL url = new URL(hubUrl + storeID);
+            URL url = new URL(hubUrl + "/" + storeID);
             HttpURLConnection con = (HttpURLConnection) url.openConnection();
             con.setRequestMethod("DELETE");
             con.setRequestProperty("Content-Type", "application/json");
