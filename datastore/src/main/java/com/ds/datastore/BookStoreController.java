@@ -43,6 +43,9 @@ public class BookStoreController {
     @Value("${application.baseUrl}")
     private String url;
 
+    @Value("${hub.url}")
+    private String hubUrl;
+
     public BookStoreController(BookStoreModelAssembler assembler, BookRepository bookRepository, BookStoreRepository storeRepository, ServerMap map) {
         this.assembler = assembler;
         this.bookRepository = bookRepository;
@@ -85,7 +88,7 @@ public class BookStoreController {
     }
 
     private HashMap<Long, String> reclaimMap() throws Exception {
-        URL url = new URL("http://71.172.193.59:8080/hub");
+        URL url = new URL(hubUrl);
         HttpURLConnection con = (HttpURLConnection) url.openConnection();
         con.setRequestMethod("GET");
         con.setRequestProperty("accept", "application/json");
@@ -185,7 +188,7 @@ public class BookStoreController {
             storeRepository.findById(storeID).orElseThrow(() -> new BookStoreNotFoundException(storeID));
             storeRepository.deleteById(storeID);
             this.map.remove(storeID);
-            URL url = new URL("http://71.172.193.59:8080/hub/" + storeID);
+            URL url = new URL(hubUrl + storeID);
             HttpURLConnection con = (HttpURLConnection) url.openConnection();
             con.setRequestMethod("DELETE");
             con.setRequestProperty("Content-Type", "application/json");
@@ -214,7 +217,7 @@ public class BookStoreController {
     }
 
     private EntityModel<BookStore> postToHub(BookStore bookStore) throws Exception {
-        URL hubAddress = new URL("http://71.172.193.59:8080/hub");
+        URL hubAddress = new URL(hubUrl);
         HttpURLConnection con = (HttpURLConnection) hubAddress.openConnection();
         con.setRequestMethod("POST");
         con.setRequestProperty("Content-Type", "application/json");
