@@ -174,7 +174,11 @@ public class BookStoreController {
         List<EntityModel<BookStore>> entModelList = new ArrayList<>();
         for(String storeID : storeIDs) {
             Long id = Long.parseLong(storeID);
-            URL url = new URL(this.map.get(id));
+            String address = this.map.get(id);
+            if(address == null) {
+                continue;
+            }
+            URL url = new URL(address);
             HttpURLConnection con = (HttpURLConnection) url.openConnection();
             con.setRequestMethod("GET");
             con.setRequestProperty("accept", "application/json");

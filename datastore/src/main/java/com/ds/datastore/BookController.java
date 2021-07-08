@@ -95,6 +95,9 @@ public class BookController {
         List<EntityModel<Book>> entModelList = new ArrayList<>();
         for(String bookId : id) {
             Long parsedId = Long.parseLong(bookId);
+            if(repository.findById(parsedId).isEmpty()) {
+                continue;
+            }
             entModelList.add(assembler.toModel(repository.findById(parsedId).get()));
         }
         return ResponseEntity.ok(CollectionModel.of(entModelList, linkTo(methodOn(BookController.class).all(storeID, null)).withSelfRel()));
@@ -147,11 +150,7 @@ public class BookController {
     }
 
     private Book checkBook(Long id, Long storeID) {
-        Book book = repository.findById(id).orElseThrow(() -> new BookNotFoundException(id));
-        if(!book.getStoreID().equals(storeID)) {
-            throw new BookNotFoundException(id);
-        }
-        return book;
+        return repository.findById(id).orElseThrow(() -> new BookNotFoundException(id));
     }
 
     private ResponseEntity<EntityModel<Book>> redirect(Long storeId) throws Exception{
