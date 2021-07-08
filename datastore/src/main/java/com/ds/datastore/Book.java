@@ -1,21 +1,47 @@
 package com.ds.datastore;
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import javax.persistence.*;
 
+@JsonIgnoreProperties(value = {"store"})
 @Entity
 public class Book {
 
+    @Column(name = "id")
     private @Id @GeneratedValue Long id;
+    @Column(name = "author")
     private String author;
+    @Column(name = "category")
     private String category;
+    @Column(name = "title")
     private String title;
+    @Column(name = "price")
     private double price = -1;
+    @Column(name = "description")
     private String description;
+    @Column(name = "language")
     private Language language;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "books")
+    private BookStore store;
+    private Long storeID;
+
     public Book() {}
+
+    public void setStoreID(Long storeID) {
+        this.storeID = storeID;
+    }
+    public Long getStoreID() {
+        return storeID;
+    }
+
+    public BookStore getStore() {
+        return store;
+    }
+    public void setStore(BookStore store) {
+        this.store = store;
+    }
 
     public String getAuthor() {
         return author;

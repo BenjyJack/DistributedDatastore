@@ -9,7 +9,9 @@ import org.springframework.hateoas.IanaLinkRelations;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URI;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -17,39 +19,79 @@ import java.util.stream.Collectors;
 public class BookController {
 
     private final BookRepository repository;
-
     private final BookModelAssembler assembler;
+    private final BookStoreRepository storeRepository;
+    private ServerMap map;
 
-    public BookController(BookRepository repository, BookModelAssembler assembler) {
+    public BookController(BookRepository repository, BookModelAssembler assembler, BookStoreRepository storeRepository, ServerMap map) {
         this.repository = repository;
         this.assembler = assembler;
+        this.storeRepository = storeRepository;
+        this.map = map;
     }
 
-    @PostMapping("/books")
-    protected ResponseEntity<EntityModel<Book>> newBook(@RequestBody Book book){
-        EntityModel<Book> entityModel = assembler.toModel(repository.save(book));
-        return ResponseEntity
+    @PostMapping("/bookstores/{storeID}/books")
+    protected ResponseEntity<EntityModel<Book>> newBook(@RequestBody Book book, @PathVariable Long storeID) throws Exception{
+        try{
+            BookStore store = checkStore(storeID);
+            book.setStoreID(storeID);
+            book.setStore(store);
+            EntityModel<Book> entityModel = assembler.toModel(repository.save(book));
+            return ResponseEntity
                 .created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
                 .body(entityModel);
-    }
-    
-    @GetMapping("/books/{id}")
-    protected EntityModel<Book> one(@PathVariable Long id) {
-        Book book = repository.findById(id).orElseThrow(() -> new BookNotFoundException(id));
-        return assembler.toModel(book);
+        }catch(BookStoreNotFoundException e){
+            if (this.map.containsKey(storeID)) {
+                return redirect(storeID);
+            }else{
+                throw e;
+            }
+        }     
     }
 
-    @GetMapping("/books")
-    protected CollectionModel<EntityModel<Book>> all(){
-        List<EntityModel<Book>> books = repository.findAll().stream()
+    @GetMapping("/bookstores/{storeID}/books/{bookId}")
+    protected ResponseEntity<EntityModel<Book>> one(@PathVariable Long bookId, @PathVariable Long storeID) throws Exception{
+        try{
+            checkStore(storeID);
+            Book book = checkBook(bookId, storeID);
+            EntityModel<Book> entityModel = assembler.toModel(book);
+            return ResponseEntity.created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
+            .body(entityModel);
+        }catch(BookStoreNotFoundException e){
+            if (this.map.containsKey(storeID)) {
+                return redirectWithId(bookId, storeID);
+            }else{
+                throw e;
+            }
+        }
+    }
+
+    @GetMapping("/bookstores/{storeID}/books")
+    protected ResponseEntity<CollectionModel<EntityModel<Book>>> all(@PathVariable Long storeID) throws Exception{
+        List<EntityModel<Book>> booksAll = null;
+        try {
+            checkStore(storeID);
+            booksAll = repository.findByStoreID(storeID)
+                .stream()
                 .map(assembler::toModel)
                 .collect(Collectors.toList());
-        return CollectionModel.of(books, linkTo(methodOn(BookController.class).all()).withSelfRel());
+            return ResponseEntity.ok(CollectionModel.of(booksAll, linkTo(methodOn(BookController.class).all(storeID)).withSelfRel()));
+        }catch (BookStoreNotFoundException e) {
+            if (this.map.containsKey(storeID)) {
+                UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(this.map.get(storeID) + "/books");
+                URI uri = new URI(builder.toUriString());
+                return ResponseEntity.status(HttpStatus.PERMANENT_REDIRECT).location(uri).build();
+            }else{
+                throw e;
+            }
+        }     
     }
 
-    @PutMapping("/books/{id}")
-    protected Book updateBook(@RequestBody Book newBook, @PathVariable Long id) {
-        return repository.findById(id)
+    @PutMapping("/bookstores/{storeID}/books/{id}")
+    protected ResponseEntity<EntityModel<Book>> updateBook(@RequestBody Book newBook, @PathVariable Long id, @PathVariable Long storeID) throws Exception{
+        try{
+            checkStore(storeID);
+            Book updatedBook = repository.findById(id)
                 .map(book -> {
                     if(newBook.getAuthor() != null) book.setAuthor(newBook.getAuthor());
                     if(newBook.getPrice() != -1)  book.setPrice(newBook.getPrice());
@@ -60,13 +102,54 @@ public class BookController {
                     return repository.save(book);
                 })
                 .orElseThrow(() -> new BookNotFoundException(id));
+            EntityModel<Book> entityModel = assembler.toModel(updatedBook);
+            return ResponseEntity.created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri()).body(entityModel);
+        }catch(BookStoreNotFoundException e){
+            if (this.map.containsKey(storeID)) {
+                return redirectWithId(id, storeID);
+            }else{
+                throw e;
+            }
+        }
     }
 
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    @DeleteMapping("/books/{id}")
-    protected void deleteBook(@PathVariable Long id) {
-        repository.findById(id).orElseThrow(() -> new BookNotFoundException(id));
-        repository.deleteById(id);
+    @DeleteMapping("/bookstores/{storeID}/books/{id}")
+    protected ResponseEntity<EntityModel<Book>> deleteBook(@PathVariable Long id, @PathVariable Long storeID) throws Exception{
+        try{
+            checkStore(storeID);
+            checkBook(id, storeID);
+            repository.deleteById(id);
+            return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+        }catch(BookStoreNotFoundException e){
+            if (this.map.containsKey(storeID)) {
+                return redirectWithId(id, storeID);
+            }else{
+                throw e;
+            }
+        }
     }
 
+    private BookStore checkStore(Long storeID){
+        return storeRepository.findById(storeID).orElseThrow(() -> new BookStoreNotFoundException(storeID));
+    }
+
+    private Book checkBook(Long id, Long storeID) {
+        Book book = repository.findById(id).orElseThrow(() -> new BookNotFoundException(id));
+        if(!book.getStoreID().equals(storeID)) {
+            throw new BookNotFoundException(id);
+        }
+        return book;
+    }
+
+    private ResponseEntity<EntityModel<Book>> redirect(Long storeId) throws Exception{
+        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(this.map.get(storeId) + "/books");
+        URI uri = new URI(builder.toUriString());
+        return ResponseEntity.status(HttpStatus.PERMANENT_REDIRECT).location(uri).build();
+    }
+
+    private ResponseEntity<EntityModel<Book>> redirectWithId(Long bookId, Long storeId) throws Exception{
+        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(this.map.get(storeId) + "/books/" + bookId);
+        URI uri = new URI(builder.toUriString());
+        return ResponseEntity.status(HttpStatus.PERMANENT_REDIRECT).location(uri).build();
+    }
 }

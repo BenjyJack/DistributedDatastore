@@ -8,16 +8,15 @@ import org.springframework.hateoas.server.RepresentationModelAssembler;
 import org.springframework.stereotype.Component;
 
 @Component
-public class BookModelAssembler implements RepresentationModelAssembler<Book, EntityModel<Book>> {
+public class BookStoreModelAssembler implements RepresentationModelAssembler<BookStore, EntityModel<BookStore>> {
 
     @Override
-    public EntityModel<Book> toModel(Book book){
+    public EntityModel<BookStore> toModel(BookStore bookStore) {
         try {
-            return EntityModel.of(book,
-                    linkTo(methodOn(BookController.class).one(book.getId(), book.getStoreID())).withSelfRel(),
-                    linkTo(methodOn(BookController.class).all(book.getStoreID())).withRel("books"));
+            return EntityModel.of(bookStore,
+                    linkTo(methodOn(BookStoreController.class).one(bookStore.getServerId())).withSelfRel(),
+                    linkTo(methodOn(BookStoreController.class).all()).withRel("bookstores"));
         } catch (Exception e) {
-            e.printStackTrace();
             return null;
         }
     }
