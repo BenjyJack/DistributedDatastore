@@ -14,9 +14,7 @@ import java.util.List;
 
 import javax.annotation.PostConstruct;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 
@@ -206,6 +204,35 @@ public class BookStoreController {
             }
         }
         return CollectionModel.of(entModelList, linkTo(methodOn(BookStoreController.class).getAllBooksFromBookStores(null)).withSelfRel());
+    }
+
+    @PostMapping("bookstores/book")
+    protected CollectionModel<EntityModel<Book>> multipleToMultiple(@RequestBody String json) throws Exception {
+        JsonArray jso = new JsonParser().parse(json).getAsJsonObject().getAsJsonArray("books");
+        List<EntityModel<Book>> entityModelList = new ArrayList<>();
+        for (JsonElement element: jso) {
+            JsonObject book = element.getAsJsonObject();
+            if(book.get("storeId").isJsonNull()) continue;
+            HttpURLConnection con = createConnection(this.map.get(book.get("storeId").getAsLong()), "POST");
+            Gson gson = new Gson();
+            String str = gson.toJson(book);
+            try(OutputStream os = con.getOutputStream()) {
+                byte[] input = str.getBytes(StandardCharsets.UTF_8);
+                os.write(input, 0, input.length);
+            }
+            int y = con.getResponseCode();
+            con.disconnect();
+            Book newBook = new Book();
+            newBook.setStoreID(book.get("storeId").getAsLong());
+            newBook.setTitle(!book.get("title").isJsonNull() ? book.get("title").getAsString() : null);
+            newBook.setCategory(!book.get("category").isJsonNull() ? book.get("category").getAsString() : null);
+            newBook.setAuthor(!book.get("author").isJsonNull() ? book.get("author").getAsString() : null);
+            newBook.setPrice(!book.get("price").isJsonNull() ? book.get("price").getAsDouble() : -1);
+            newBook.setLanguage(!book.get("language").isJsonNull() ? Language.valueOf(book.get("language").getAsString()) : null);
+            newBook.setDescription(!book.get("description").isJsonNull() ? book.get("description").getAsString() : null);
+            entityModelList.add(bookModelAssembler.toModel(newBook));
+        }
+        return CollectionModel.of(entityModelList, linkTo(methodOn(BookController.class)).withSelfRel());
     }
 
     @PutMapping("/bookstores/{storeID}")
