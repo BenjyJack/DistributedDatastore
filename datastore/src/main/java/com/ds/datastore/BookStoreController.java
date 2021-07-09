@@ -4,6 +4,7 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 import java.io.*;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Type;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
@@ -138,7 +139,11 @@ public class BookStoreController {
         List<EntityModel<BookStore>> entModelList = new ArrayList<>();
         if(id == null) {
             for (Long storeId : this.map.keySet()) {
-                entModelList.add(getAndParseBookStore(this.map.get(storeId)));
+                try{
+                    entModelList.add(getAndParseBookStore(this.map.get(storeId)));
+                }catch(Exception e){
+                    continue;
+                }
             }
         }else{
             for(String storeID : id) {
@@ -147,7 +152,11 @@ public class BookStoreController {
                 if(address == null) {
                     continue;
                 }
-                entModelList.add(getAndParseBookStore(address));
+                try{
+                    entModelList.add(getAndParseBookStore(address));
+                }catch(Exception e){
+                    continue;
+                }
             }
         }
         return CollectionModel.of(entModelList, linkTo(methodOn(BookStoreController.class).getBookStores(null)).withSelfRel());
@@ -183,7 +192,12 @@ public class BookStoreController {
                 continue;
             }
             HttpURLConnection con = createConnection(address);
-            JsonObject jso = getJsonObject(con);
+            JsonObject jso = null;
+            try{
+                jso = getJsonObject(con);
+            }catch(Exception e){
+                continue;
+            }
             Gson gson = new Gson();
             Type collectionType = new TypeToken<List<Book>>(){}.getType();
             List<Book> books = gson.fromJson(jso.get("books"), collectionType);
@@ -213,6 +227,7 @@ public class BookStoreController {
             storeRepository.deleteById(storeID);
             this.map.remove(storeID);
             HttpURLConnection con = createConnection(hubUrl + "/" + storeID, "DELETE");
+            con.getResponseCode();
             List<Book> books = bookRepository.findByStoreID(storeID);
             for (Book book : books) {
                 bookRepository.delete(book);
@@ -281,7 +296,7 @@ public class BookStoreController {
         con.setRequestProperty("Content-Type", "application/json");
         con.setDoOutput(true);
         con.connect();
-        int x = con.getResponseCode();
+        //int x = con.getResponseCode();
         return con;
     }
 
@@ -294,3 +309,4 @@ public class BookStoreController {
     }
 
 }
+//TODO Discuss New bookstore after deleting while server remains running
