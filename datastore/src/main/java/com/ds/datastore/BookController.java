@@ -3,6 +3,8 @@ package com.ds.datastore;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.IanaLinkRelations;
@@ -11,8 +13,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
 import java.net.URI;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -48,6 +56,58 @@ public class BookController {
                 throw e;
             }
         }     
+    }
+
+    @PostMapping("/bookstores/book")
+    protected CollectionModel<EntityModel<Book>> oneBookToManyStores(@RequestBody Book book, @RequestParam List<String> id) throws Exception {
+        List<EntityModel<Book>> entityList = new ArrayList<>();
+        for(String storeId: id)
+        {
+            book.setStoreID(Long.parseLong(storeId));
+            URL url = new URL(map.get(Long.parseLong(storeId)) + "/books");
+            HttpURLConnection con = (HttpURLConnection) url.openConnection();
+            con.setRequestMethod("POST");
+            con.setRequestProperty("Content-Type", "application/json");
+            con.setDoOutput(true);
+            con.connect();
+
+            Gson gson = new Gson();
+            JsonObject jso = new JsonObject();
+            if(book.getAuthor() != null)
+            {
+                jso.addProperty("author", book.getAuthor());
+            }
+            if(book.getTitle() != null)
+            {
+                jso.addProperty("title", book.getTitle());
+            }
+            if(book.getCategory() != null)
+            {
+                jso.addProperty("category", book.getCategory());
+            }
+            jso.addProperty("price", book.getPrice());
+            if(book.getDescription() != null)
+            {
+                jso.addProperty("description", book.getDescription());
+            }
+            if(book.getLanguage() != null)
+            {
+                jso.addProperty("language", String.valueOf(book.getLanguage()));
+            }
+            String str = gson.toJson(jso);
+            try(OutputStream os = con.getOutputStream()) {
+                byte[] input = str.getBytes(StandardCharsets.UTF_8);
+                os.write(input, 0, input.length);
+            }
+            int y = con.getResponseCode();
+            con.disconnect();
+
+
+            entityList.add(assembler.toModel(new Book(book)));
+        }
+
+
+        return CollectionModel.of(entityList, linkTo(methodOn(BookController.class).oneBookToManyStores(null, null)).withSelfRel());
     }
 
     @GetMapping("/bookstores/{storeID}/books/{bookId}")

@@ -28,6 +28,14 @@ public class Book {
     private Long storeID;
 
     public Book() {}
+    public Book(Book book)
+    {
+        this.language=book.getLanguage();
+        this.title=book.getTitle();
+        this.author=book.getAuthor();
+        this.description=book.getDescription();
+        this.storeID = book.getStoreID();
+    }
 
     public void setStoreID(Long storeID) {
         this.storeID = storeID;
