@@ -296,7 +296,6 @@ public class BookStoreController {
         con.setRequestProperty("Content-Type", "application/json");
         con.setDoOutput(true);
         con.connect();
-        //int x = con.getResponseCode();
         return con;
     }
 
@@ -309,4 +308,3 @@ public class BookStoreController {
     }
 
 }
-//TODO Discuss New bookstore after deleting while server remains running
