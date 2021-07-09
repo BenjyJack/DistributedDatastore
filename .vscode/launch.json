@@ -17,8 +17,8 @@
             "request": "launch",
             "mainClass": "com.ds.datastore.DatastoreApplication",
             "projectName": "datastore",
-            "env": {"ADDRESS":"http://c13422fcf88f.ngrok.io",
-            "HUB":"http://71.172.193.59:8080/hub"}
+            "env": {"ADDRESS":" http://20df06382cee.ngrok.io",
+                "HUB":"http://108.35.72.227:8080/hub"}
         },
         {
             "type": "java",
