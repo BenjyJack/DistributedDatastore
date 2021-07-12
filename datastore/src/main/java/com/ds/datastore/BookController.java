@@ -1,8 +1,11 @@
 package com.ds.datastore;
 
+import static com.ds.datastore.Utilities.*;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.IanaLinkRelations;
@@ -11,7 +14,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.HttpURLConnection;
 import java.net.URI;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -48,6 +53,39 @@ public class BookController {
                 throw e;
             }
         }     
+    }
+
+    @PostMapping("/bookstores/book")
+    protected CollectionModel<EntityModel<Book>> oneBookToManyStores(@RequestBody Book book, @RequestParam List<String> id) throws Exception {
+        List<EntityModel<Book>> entityList = new ArrayList<>();
+        for(String storeId: id)
+        {
+            book.setStoreID(Long.parseLong(storeId));
+            if(!this.map.containsKey(Long.parseLong(storeId))) continue;
+            HttpURLConnection con = createConnection(this.map.get(Long.parseLong(storeId)) + "/books", "POST");
+            Gson gson = new Gson();
+            JsonObject jso = book.makeJson();
+            outputJson(con, gson, jso);
+            entityList.add(assembler.toModel(new Book(book)));
+        }
+        return CollectionModel.of(entityList, linkTo(methodOn(BookController.class).oneBookToManyStores(null, null)).withSelfRel());
+    }
+
+    @PostMapping("bookstores/books")
+    protected CollectionModel<EntityModel<Book>> multipleToMultiple(@RequestBody BookArray json) throws Exception {
+        List<EntityModel<Book>> entityModelList = new ArrayList<>();
+        for (Book book: json.getBooks()) {
+            if(book.getStoreID() == null || !this.map.containsKey(book.getStoreID())) {
+                continue;
+            }
+            JsonObject jso = book.makeJson();
+            jso.addProperty("storeID", book.getStoreID());
+            HttpURLConnection con = createConnection(this.map.get(book.getStoreID()) + "/books", "POST");
+            Gson gson = new Gson();
+            outputJson(con, gson, jso);
+            entityModelList.add(assembler.toModel(book));
+        }
+        return CollectionModel.of(entityModelList, linkTo(methodOn(BookController.class)).withSelfRel());
     }
 
     @GetMapping("/bookstores/{storeID}/books/{bookId}")

@@ -1,6 +1,8 @@
 package com.ds.datastore;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.google.gson.JsonObject;
+
 import javax.persistence.*;
 
 @JsonIgnoreProperties(value = {"store"})
@@ -28,6 +30,15 @@ public class Book {
     private Long storeID;
 
     public Book() {}
+    public Book(Book book)
+    {
+        this.language=book.getLanguage();
+        this.title=book.getTitle();
+        this.author=book.getAuthor();
+        this.description=book.getDescription();
+        this.storeID = book.getStoreID();
+        this.price = book.getPrice();
+    }
 
     public void setStoreID(Long storeID) {
         this.storeID = storeID;
@@ -90,6 +101,32 @@ public class Book {
     }
     public Long getId() {
         return id;
+    }
+
+    public JsonObject makeJson() {
+        JsonObject jso = new JsonObject();
+        if(this.getAuthor() != null)
+        {
+            jso.addProperty("author", this.getAuthor());
+        }
+        if(this.getTitle() != null)
+        {
+            jso.addProperty("title", this.getTitle());
+        }
+        if(this.getCategory() != null)
+        {
+            jso.addProperty("category", this.getCategory());
+        }
+        jso.addProperty("price", this.getPrice());
+        if(this.getDescription() != null)
+        {
+            jso.addProperty("description", this.getDescription());
+        }
+        if(this.getLanguage() != null)
+        {
+            jso.addProperty("language", String.valueOf(this.getLanguage()));
+        }
+        return jso;
     }
 
 }
