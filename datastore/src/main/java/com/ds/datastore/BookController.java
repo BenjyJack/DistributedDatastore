@@ -1,5 +1,6 @@
 package com.ds.datastore;
 
+import static com.ds.datastore.Utilities.*;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
@@ -74,7 +75,7 @@ public class BookController {
 
             Gson gson = new Gson();
             JsonObject jso = book.makeJson();
-            BookStoreController.outputJson(con, gson, jso);
+            outputJson(con, gson, jso);
 
 
             entityList.add(assembler.toModel(new Book(book)));
@@ -98,7 +99,7 @@ public class BookController {
 
             HttpURLConnection con = createConnection(this.map.get(book.getStoreID()) + "/books", "POST");
             Gson gson = new Gson();
-            BookStoreController.outputJson(con, gson, jso);
+            outputJson(con, gson, jso);
 
             entityModelList.add(assembler.toModel(book));
         }
@@ -220,13 +221,5 @@ public class BookController {
         return ResponseEntity.status(HttpStatus.PERMANENT_REDIRECT).location(uri).build();
     }
 
-    private HttpURLConnection createConnection(String address, String request) throws Exception {
-        URL url = new URL(address);
-        HttpURLConnection con = (HttpURLConnection) url.openConnection();
-        con.setRequestMethod(request);
-        con.setRequestProperty("Content-Type", "application/json");
-        con.setDoOutput(true);
-        con.connect();
-        return con;
-    }
+
 }

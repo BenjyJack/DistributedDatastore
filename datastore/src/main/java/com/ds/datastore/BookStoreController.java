@@ -1,5 +1,6 @@
 package com.ds.datastore;
 
+import static com.ds.datastore.Utilities.*;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
@@ -74,15 +75,7 @@ public class BookStoreController {
         outputJson(con, gson, json);
     }
 
-    protected static void outputJson(HttpURLConnection con, Gson gson, JsonObject json) throws IOException {
-        String str = gson.toJson(json);
-        try(OutputStream os = con.getOutputStream()) {
-            byte[] input = str.getBytes(StandardCharsets.UTF_8);
-            os.write(input, 0, input.length);
-        }
-        int y = con.getResponseCode();
-        con.disconnect();
-    }
+
 
     private HashMap<Long, String> reclaimMap() throws Exception {
         HttpURLConnection con = createConnection(hubUrl);
