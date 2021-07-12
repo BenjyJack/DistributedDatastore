@@ -207,30 +207,48 @@ public class BookStoreController {
     }
 
     @PostMapping("bookstores/book")
-    protected CollectionModel<EntityModel<Book>> multipleToMultiple(@RequestBody String json) throws Exception {
-        JsonArray jso = new JsonParser().parse(json).getAsJsonObject().getAsJsonArray("books");
+    protected CollectionModel<EntityModel<Book>> multipleToMultiple(@RequestBody BookArray json) throws Exception {
+//        JsonArray jso = new JsonParser().parse(json).getAsJsonObject().getAsJsonArray("books");
         List<EntityModel<Book>> entityModelList = new ArrayList<>();
-        for (JsonElement element: jso) {
-            JsonObject book = element.getAsJsonObject();
-            if(book.get("storeId").isJsonNull()) continue;
-            HttpURLConnection con = createConnection(this.map.get(book.get("storeId").getAsLong()), "POST");
+        for (Book book: json.getBooks()) {
+//            JsonObject book = element.getAsJsonObject();
+            if(book.getStoreID() == null || !this.map.containsKey(book.getStoreID())) continue;
+            JsonObject jso = new JsonObject();
+            if(book.getAuthor() != null)
+            {
+                jso.addProperty("author", book.getAuthor());
+            }
+            if(book.getTitle() != null)
+            {
+                jso.addProperty("title", book.getTitle());
+            }
+            if(book.getCategory() != null)
+            {
+                jso.addProperty("category", book.getCategory());
+            }
+            jso.addProperty("price", book.getPrice());
+            if(book.getDescription() != null)
+            {
+                jso.addProperty("description", book.getDescription());
+            }
+            if(book.getLanguage() != null)
+            {
+                jso.addProperty("language", String.valueOf(book.getLanguage()));
+            }
+            jso.addProperty("storeID", book.getStoreID());
+
+
+            HttpURLConnection con = createConnection(this.map.get(book.getStoreID()) + "/books", "POST");
             Gson gson = new Gson();
-            String str = gson.toJson(book);
+            String str = gson.toJson(jso);
             try(OutputStream os = con.getOutputStream()) {
                 byte[] input = str.getBytes(StandardCharsets.UTF_8);
                 os.write(input, 0, input.length);
             }
             int y = con.getResponseCode();
             con.disconnect();
-            Book newBook = new Book();
-            newBook.setStoreID(book.get("storeId").getAsLong());
-            newBook.setTitle(!book.get("title").isJsonNull() ? book.get("title").getAsString() : null);
-            newBook.setCategory(!book.get("category").isJsonNull() ? book.get("category").getAsString() : null);
-            newBook.setAuthor(!book.get("author").isJsonNull() ? book.get("author").getAsString() : null);
-            newBook.setPrice(!book.get("price").isJsonNull() ? book.get("price").getAsDouble() : -1);
-            newBook.setLanguage(!book.get("language").isJsonNull() ? Language.valueOf(book.get("language").getAsString()) : null);
-            newBook.setDescription(!book.get("description").isJsonNull() ? book.get("description").getAsString() : null);
-            entityModelList.add(bookModelAssembler.toModel(newBook));
+
+            entityModelList.add(bookModelAssembler.toModel(book));
         }
         return CollectionModel.of(entityModelList, linkTo(methodOn(BookController.class)).withSelfRel());
     }
