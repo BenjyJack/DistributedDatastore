@@ -206,13 +206,15 @@ public class BookStoreController {
         return CollectionModel.of(entModelList, linkTo(methodOn(BookStoreController.class).getAllBooksFromBookStores(null)).withSelfRel());
     }
 
-    @PostMapping("bookstores/book")
+    @PostMapping("bookstores/books")
     protected CollectionModel<EntityModel<Book>> multipleToMultiple(@RequestBody BookArray json) throws Exception {
 //        JsonArray jso = new JsonParser().parse(json).getAsJsonObject().getAsJsonArray("books");
         List<EntityModel<Book>> entityModelList = new ArrayList<>();
         for (Book book: json.getBooks()) {
 //            JsonObject book = element.getAsJsonObject();
-            if(book.getStoreID() == null || !this.map.containsKey(book.getStoreID())) continue;
+            if(book.getStoreID() == null || !this.map.containsKey(book.getStoreID())) {
+                continue;
+            }
             JsonObject jso = new JsonObject();
             if(book.getAuthor() != null)
             {

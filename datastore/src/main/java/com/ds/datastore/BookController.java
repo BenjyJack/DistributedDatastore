@@ -64,7 +64,12 @@ public class BookController {
         for(String storeId: id)
         {
             book.setStoreID(Long.parseLong(storeId));
-            URL url = new URL(map.get(Long.parseLong(storeId)) + "/books");
+            URL url;
+            try{
+                url = new URL(map.get(Long.parseLong(storeId)) + "/books");
+            } catch(Exception e){
+                continue;
+            }
             HttpURLConnection con = (HttpURLConnection) url.openConnection();
             con.setRequestMethod("POST");
             con.setRequestProperty("Content-Type", "application/json");
