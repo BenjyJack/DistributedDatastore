@@ -61,12 +61,8 @@ public class BookController {
         for(String storeId: id)
         {
             book.setStoreID(Long.parseLong(storeId));
-            try{
-                URL url = new URL(map.get(Long.parseLong(storeId)) + "/books");
-            } catch(Exception e){
-                continue;
-            }
-            HttpURLConnection con = createConnection(this.map.get(Long.parseLong(storeId)), "POST");
+            if(!this.map.containsKey(Long.parseLong(storeId))) continue;
+            HttpURLConnection con = createConnection(this.map.get(Long.parseLong(storeId)) + "/books", "POST");
             Gson gson = new Gson();
             JsonObject jso = book.makeJson();
             outputJson(con, gson, jso);
@@ -74,7 +70,6 @@ public class BookController {
         }
         return CollectionModel.of(entityList, linkTo(methodOn(BookController.class).oneBookToManyStores(null, null)).withSelfRel());
     }
-
 
     @PostMapping("bookstores/books")
     protected CollectionModel<EntityModel<Book>> multipleToMultiple(@RequestBody BookArray json) throws Exception {
