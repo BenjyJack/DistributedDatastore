@@ -5,7 +5,6 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 import java.io.*;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Type;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
@@ -75,10 +74,8 @@ public class BookStoreController {
         outputJson(con, gson, json);
     }
 
-
-
     private HashMap<Long, String> reclaimMap() throws Exception {
-        HttpURLConnection con = createConnection(hubUrl);
+        HttpURLConnection con = createGetConnection(hubUrl);
         InputStream inStream = con.getInputStream();
         JsonReader reader = new JsonReader(new InputStreamReader(inStream, StandardCharsets.UTF_8));
         Gson gson = new Gson();
@@ -158,9 +155,8 @@ public class BookStoreController {
     }
 
     private EntityModel<BookStore> getAndParseBookStore(String address) throws Exception{
-        HttpURLConnection con = createConnection(address);
+        HttpURLConnection con = createGetConnection(address);
         JsonObject jso = getJsonObject(con);
-
         BookStore store = new BookStore();
         store.setServerId((jso.get("serverId") != null ? jso.get("serverId").getAsLong() : null));
         store.setName(!jso.get("name").isJsonNull() ? jso.get("name").getAsString() : null);
@@ -186,7 +182,7 @@ public class BookStoreController {
             if(address == null) {
                 continue;
             }
-            HttpURLConnection con = createConnection(address);
+            HttpURLConnection con = createGetConnection(address);
             JsonObject jso = null;
             try{
                 jso = getJsonObject(con);
@@ -202,8 +198,6 @@ public class BookStoreController {
         }
         return CollectionModel.of(entModelList, linkTo(methodOn(BookStoreController.class).getAllBooksFromBookStores(null)).withSelfRel());
     }
-
-
 
     @PutMapping("/bookstores/{storeID}")
     protected BookStore updateBookStore(@RequestBody BookStore newBookStore, @PathVariable Long storeID) {
@@ -273,29 +267,6 @@ public class BookStoreController {
         return bookStoreModelAssembler.toModel(storeRepository.save(bookStore));
     }
 
-    // For GET requests
-    private HttpURLConnection createConnection(String address) throws Exception {
-        URL url = new URL(address);
-        HttpURLConnection con = (HttpURLConnection) url.openConnection();
-        con.setRequestMethod("GET");
-        con.setRequestProperty("accept", "application/json");
-        con.setDoOutput(true);
-        con.connect();
-        int x = con.getResponseCode();
-        return con;
-    }
-
-    // For POST, PUT, and DELETE requests
-    private HttpURLConnection createConnection(String address, String request) throws Exception {
-        URL url = new URL(address);
-        HttpURLConnection con = (HttpURLConnection) url.openConnection();
-        con.setRequestMethod(request);
-        con.setRequestProperty("Content-Type", "application/json");
-        con.setDoOutput(true);
-        con.connect();
-        return con;
-    }
-
     private JsonObject getJsonObject(HttpURLConnection con) throws IOException {
         InputStream inStream = con.getInputStream();
         JsonObject jso = (JsonObject) new JsonParser().parse(new InputStreamReader(inStream, StandardCharsets.UTF_8));
@@ -303,5 +274,4 @@ public class BookStoreController {
         con.disconnect();
         return jso;
     }
-
 }

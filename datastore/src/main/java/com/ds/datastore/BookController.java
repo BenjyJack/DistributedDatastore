@@ -14,14 +14,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.io.IOException;
-import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -65,23 +61,17 @@ public class BookController {
         for(String storeId: id)
         {
             book.setStoreID(Long.parseLong(storeId));
-            URL url;
             try{
-                url = new URL(map.get(Long.parseLong(storeId)) + "/books");
+                URL url = new URL(map.get(Long.parseLong(storeId)) + "/books");
             } catch(Exception e){
                 continue;
             }
             HttpURLConnection con = createConnection(this.map.get(Long.parseLong(storeId)), "POST");
-
             Gson gson = new Gson();
             JsonObject jso = book.makeJson();
             outputJson(con, gson, jso);
-
-
             entityList.add(assembler.toModel(new Book(book)));
         }
-
-
         return CollectionModel.of(entityList, linkTo(methodOn(BookController.class).oneBookToManyStores(null, null)).withSelfRel());
     }
 
@@ -95,12 +85,9 @@ public class BookController {
             }
             JsonObject jso = book.makeJson();
             jso.addProperty("storeID", book.getStoreID());
-
-
             HttpURLConnection con = createConnection(this.map.get(book.getStoreID()) + "/books", "POST");
             Gson gson = new Gson();
             outputJson(con, gson, jso);
-
             entityModelList.add(assembler.toModel(book));
         }
         return CollectionModel.of(entityModelList, linkTo(methodOn(BookController.class)).withSelfRel());
@@ -220,6 +207,4 @@ public class BookController {
         URI uri = new URI(builder.toUriString());
         return ResponseEntity.status(HttpStatus.PERMANENT_REDIRECT).location(uri).build();
     }
-
-
 }
