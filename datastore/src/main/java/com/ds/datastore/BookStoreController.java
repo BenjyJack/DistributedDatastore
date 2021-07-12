@@ -71,6 +71,10 @@ public class BookStoreController {
         JsonObject json = new JsonObject();
         json.addProperty("id", this.id);
         json.addProperty("address", this.url + "/bookstores/" + this.id);
+        outputJson(con, gson, json);
+    }
+
+    protected static void outputJson(HttpURLConnection con, Gson gson, JsonObject json) throws IOException {
         String str = gson.toJson(json);
         try(OutputStream os = con.getOutputStream()) {
             byte[] input = str.getBytes(StandardCharsets.UTF_8);

@@ -74,13 +74,7 @@ public class BookController {
 
             Gson gson = new Gson();
             JsonObject jso = makeJson(book);
-            String str = gson.toJson(jso);
-            try(OutputStream os = con.getOutputStream()) {
-                byte[] input = str.getBytes(StandardCharsets.UTF_8);
-                os.write(input, 0, input.length);
-            }
-            int y = con.getResponseCode();
-            con.disconnect();
+            BookStoreController.outputJson(con, gson, jso);
 
 
             entityList.add(assembler.toModel(new Book(book)));
@@ -129,13 +123,7 @@ public class BookController {
 
             HttpURLConnection con = createConnection(this.map.get(book.getStoreID()) + "/books", "POST");
             Gson gson = new Gson();
-            String str = gson.toJson(jso);
-            try(OutputStream os = con.getOutputStream()) {
-                byte[] input = str.getBytes(StandardCharsets.UTF_8);
-                os.write(input, 0, input.length);
-            }
-            int y = con.getResponseCode();
-            con.disconnect();
+            BookStoreController.outputJson(con, gson, jso);
 
             entityModelList.add(assembler.toModel(book));
         }
