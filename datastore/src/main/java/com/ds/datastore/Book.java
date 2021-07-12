@@ -35,6 +35,7 @@ public class Book {
         this.author=book.getAuthor();
         this.description=book.getDescription();
         this.storeID = book.getStoreID();
+        this.price = book.getPrice();
     }
 
     public void setStoreID(Long storeID) {
