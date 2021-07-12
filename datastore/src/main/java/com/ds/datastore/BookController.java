@@ -73,7 +73,7 @@ public class BookController {
             HttpURLConnection con = createConnection(this.map.get(Long.parseLong(storeId)), "POST");
 
             Gson gson = new Gson();
-            JsonObject jso = makeJson(book);
+            JsonObject jso = book.makeJson();
             BookStoreController.outputJson(con, gson, jso);
 
 
@@ -84,31 +84,6 @@ public class BookController {
         return CollectionModel.of(entityList, linkTo(methodOn(BookController.class).oneBookToManyStores(null, null)).withSelfRel());
     }
 
-    private JsonObject makeJson(Book book) {
-        JsonObject jso = new JsonObject();
-        if(book.getAuthor() != null)
-        {
-            jso.addProperty("author", book.getAuthor());
-        }
-        if(book.getTitle() != null)
-        {
-            jso.addProperty("title", book.getTitle());
-        }
-        if(book.getCategory() != null)
-        {
-            jso.addProperty("category", book.getCategory());
-        }
-        jso.addProperty("price", book.getPrice());
-        if(book.getDescription() != null)
-        {
-            jso.addProperty("description", book.getDescription());
-        }
-        if(book.getLanguage() != null)
-        {
-            jso.addProperty("language", String.valueOf(book.getLanguage()));
-        }
-        return jso;
-    }
 
     @PostMapping("bookstores/books")
     protected CollectionModel<EntityModel<Book>> multipleToMultiple(@RequestBody BookArray json) throws Exception {
@@ -117,7 +92,7 @@ public class BookController {
             if(book.getStoreID() == null || !this.map.containsKey(book.getStoreID())) {
                 continue;
             }
-            JsonObject jso = makeJson(book);
+            JsonObject jso = book.makeJson();
             jso.addProperty("storeID", book.getStoreID());
 
 
