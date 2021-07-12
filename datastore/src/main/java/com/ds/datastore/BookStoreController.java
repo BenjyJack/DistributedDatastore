@@ -14,9 +14,7 @@ import java.util.List;
 
 import javax.annotation.PostConstruct;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 
@@ -206,6 +204,53 @@ public class BookStoreController {
             }
         }
         return CollectionModel.of(entModelList, linkTo(methodOn(BookStoreController.class).getAllBooksFromBookStores(null)).withSelfRel());
+    }
+
+    @PostMapping("bookstores/book")
+    protected CollectionModel<EntityModel<Book>> multipleToMultiple(@RequestBody BookArray json) throws Exception {
+//        JsonArray jso = new JsonParser().parse(json).getAsJsonObject().getAsJsonArray("books");
+        List<EntityModel<Book>> entityModelList = new ArrayList<>();
+        for (Book book: json.getBooks()) {
+//            JsonObject book = element.getAsJsonObject();
+            if(book.getStoreID() == null || !this.map.containsKey(book.getStoreID())) continue;
+            JsonObject jso = new JsonObject();
+            if(book.getAuthor() != null)
+            {
+                jso.addProperty("author", book.getAuthor());
+            }
+            if(book.getTitle() != null)
+            {
+                jso.addProperty("title", book.getTitle());
+            }
+            if(book.getCategory() != null)
+            {
+                jso.addProperty("category", book.getCategory());
+            }
+            jso.addProperty("price", book.getPrice());
+            if(book.getDescription() != null)
+            {
+                jso.addProperty("description", book.getDescription());
+            }
+            if(book.getLanguage() != null)
+            {
+                jso.addProperty("language", String.valueOf(book.getLanguage()));
+            }
+            jso.addProperty("storeID", book.getStoreID());
+
+
+            HttpURLConnection con = createConnection(this.map.get(book.getStoreID()) + "/books", "POST");
+            Gson gson = new Gson();
+            String str = gson.toJson(jso);
+            try(OutputStream os = con.getOutputStream()) {
+                byte[] input = str.getBytes(StandardCharsets.UTF_8);
+                os.write(input, 0, input.length);
+            }
+            int y = con.getResponseCode();
+            con.disconnect();
+
+            entityModelList.add(bookModelAssembler.toModel(book));
+        }
+        return CollectionModel.of(entityModelList, linkTo(methodOn(BookController.class)).withSelfRel());
     }
 
     @PutMapping("/bookstores/{storeID}")
