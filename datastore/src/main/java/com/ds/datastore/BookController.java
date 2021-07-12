@@ -70,35 +70,10 @@ public class BookController {
             } catch(Exception e){
                 continue;
             }
-            HttpURLConnection con = (HttpURLConnection) url.openConnection();
-            con.setRequestMethod("POST");
-            con.setRequestProperty("Content-Type", "application/json");
-            con.setDoOutput(true);
-            con.connect();
+            HttpURLConnection con = createConnection(this.map.get(Long.parseLong(storeId)), "POST");
 
             Gson gson = new Gson();
-            JsonObject jso = new JsonObject();
-            if(book.getAuthor() != null)
-            {
-                jso.addProperty("author", book.getAuthor());
-            }
-            if(book.getTitle() != null)
-            {
-                jso.addProperty("title", book.getTitle());
-            }
-            if(book.getCategory() != null)
-            {
-                jso.addProperty("category", book.getCategory());
-            }
-            jso.addProperty("price", book.getPrice());
-            if(book.getDescription() != null)
-            {
-                jso.addProperty("description", book.getDescription());
-            }
-            if(book.getLanguage() != null)
-            {
-                jso.addProperty("language", String.valueOf(book.getLanguage()));
-            }
+            JsonObject jso = makeJson(book);
             String str = gson.toJson(jso);
             try(OutputStream os = con.getOutputStream()) {
                 byte[] input = str.getBytes(StandardCharsets.UTF_8);
@@ -113,6 +88,58 @@ public class BookController {
 
 
         return CollectionModel.of(entityList, linkTo(methodOn(BookController.class).oneBookToManyStores(null, null)).withSelfRel());
+    }
+
+    private JsonObject makeJson(Book book) {
+        JsonObject jso = new JsonObject();
+        if(book.getAuthor() != null)
+        {
+            jso.addProperty("author", book.getAuthor());
+        }
+        if(book.getTitle() != null)
+        {
+            jso.addProperty("title", book.getTitle());
+        }
+        if(book.getCategory() != null)
+        {
+            jso.addProperty("category", book.getCategory());
+        }
+        jso.addProperty("price", book.getPrice());
+        if(book.getDescription() != null)
+        {
+            jso.addProperty("description", book.getDescription());
+        }
+        if(book.getLanguage() != null)
+        {
+            jso.addProperty("language", String.valueOf(book.getLanguage()));
+        }
+        return jso;
+    }
+
+    @PostMapping("bookstores/books")
+    protected CollectionModel<EntityModel<Book>> multipleToMultiple(@RequestBody BookArray json) throws Exception {
+        List<EntityModel<Book>> entityModelList = new ArrayList<>();
+        for (Book book: json.getBooks()) {
+            if(book.getStoreID() == null || !this.map.containsKey(book.getStoreID())) {
+                continue;
+            }
+            JsonObject jso = makeJson(book);
+            jso.addProperty("storeID", book.getStoreID());
+
+
+            HttpURLConnection con = createConnection(this.map.get(book.getStoreID()) + "/books", "POST");
+            Gson gson = new Gson();
+            String str = gson.toJson(jso);
+            try(OutputStream os = con.getOutputStream()) {
+                byte[] input = str.getBytes(StandardCharsets.UTF_8);
+                os.write(input, 0, input.length);
+            }
+            int y = con.getResponseCode();
+            con.disconnect();
+
+            entityModelList.add(assembler.toModel(book));
+        }
+        return CollectionModel.of(entityModelList, linkTo(methodOn(BookController.class)).withSelfRel());
     }
 
     @GetMapping("/bookstores/{storeID}/books/{bookId}")
@@ -228,5 +255,15 @@ public class BookController {
         UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(this.map.get(storeId) + "/books/" + bookId);
         URI uri = new URI(builder.toUriString());
         return ResponseEntity.status(HttpStatus.PERMANENT_REDIRECT).location(uri).build();
+    }
+
+    private HttpURLConnection createConnection(String address, String request) throws Exception {
+        URL url = new URL(address);
+        HttpURLConnection con = (HttpURLConnection) url.openConnection();
+        con.setRequestMethod(request);
+        con.setRequestProperty("Content-Type", "application/json");
+        con.setDoOutput(true);
+        con.connect();
+        return con;
     }
 }
