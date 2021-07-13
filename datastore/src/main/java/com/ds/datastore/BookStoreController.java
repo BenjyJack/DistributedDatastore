@@ -101,21 +101,22 @@ public class BookStoreController {
 
     private Long getLeader() throws Exception {
         HttpURLConnection con = createGetConnection(hubUrl + "/leader", this.url, id);
-        DataInputStream inStream = new DataInputStream(con.getInputStream());
-        int x = con.getResponseCode();
-        Long leader = null;
-        try {
-            leader = inStream.readLong();
+        InputStream inStream = con.getInputStream();
+        InputStreamReader inStreamReader = new InputStreamReader(inStream);
+        try (BufferedReader br = new BufferedReader(
+                new InputStreamReader(con.getInputStream(), StandardCharsets.UTF_8))) {
+            StringBuilder response = new StringBuilder();
+            String responseLine = null;
+            while ((responseLine = br.readLine()) != null) {
+                response.append(responseLine.trim());
+            }
+            if(responseLine == null)
+            {
+                return null;
+            }
+            return Long.parseLong(responseLine);
         }
-        catch (Exception e)
-        {
-
-        }
-        inStream.close();
-
-        return leader;
     }
-
 
     @PutMapping("/bookstores/{storeID}/leader")
     protected void setLeader(@RequestBody Long leader)
