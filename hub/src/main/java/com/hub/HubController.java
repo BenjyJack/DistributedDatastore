@@ -109,7 +109,10 @@ public class HubController {
     }
 
     @GetMapping("/hub/leader")
-    protected Long getLeader() {
+    protected Long getLeader() throws IOException {
+        if(leader == null){
+            leader = findLeader();
+        }
         return leader;
     }
 
