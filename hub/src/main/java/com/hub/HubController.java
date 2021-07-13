@@ -116,9 +116,9 @@ public class HubController {
     }
 
     @GetMapping("/hub/leader")
-    protected Long getLeader() throws IOException {
+    protected Long getLeader(@RequestHeader String address) throws IOException {
         if(leader == null){
-            leader = findLeader();
+            System.out.println(address);
         }
         return leader;
     }
