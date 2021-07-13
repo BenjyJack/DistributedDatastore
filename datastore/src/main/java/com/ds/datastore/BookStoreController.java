@@ -267,6 +267,11 @@ public class BookStoreController {
         Long id = jso.get("id").getAsLong();
         this.map.remove(id);
     }
+    @GetMapping("/bookstores/{storeID}/ping")
+    protected boolean ping()
+    {
+        return true;
+    }
 
     private EntityModel<BookStore> postToHub(BookStore bookStore) throws Exception {
         HttpURLConnection con = createConnection(hubUrl, "POST");
