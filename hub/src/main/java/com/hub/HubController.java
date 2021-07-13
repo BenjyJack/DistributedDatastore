@@ -46,17 +46,22 @@ public class HubController {
     private Long findLeader() throws IOException {
         for(Long id: hub.getMap().keySet()) {
             URL url = new URL(hub.getMap().get(id) + "/ping");
-            HttpURLConnection con = (HttpURLConnection) url.openConnection();
-            con.setRequestMethod("GET");
-            con.setRequestProperty("accept", "application/json");
-            con.setDoOutput(true);
+            try {
+                HttpURLConnection con = (HttpURLConnection) url.openConnection();
+                con.setRequestMethod("GET");
+                con.setRequestProperty("accept", "application/json");
+                con.setDoOutput(true);
 
-            DataInputStream inputStream = (DataInputStream) con.getInputStream();
-            if(inputStream.readBoolean())
+                DataInputStream inputStream = (DataInputStream) con.getInputStream();
+                if (inputStream.readBoolean()) {
+                    return id;
+                }
+            }
+            catch(Exception ignored)
             {
-                return id;
             }
         }
+        
         return null;
     }
 
