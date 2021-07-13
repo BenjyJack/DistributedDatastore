@@ -101,8 +101,8 @@ public class BookStoreController {
 
     private Long getLeader() throws Exception {
         HttpURLConnection con = createGetConnection(hubUrl + "/leader", this.url, id);
-        InputStream inStream = con.getInputStream();
-        InputStreamReader inStreamReader = new InputStreamReader(inStream);
+        //InputStream inStream = con.getInputStream();
+        //InputStreamReader inStreamReader = new InputStreamReader(inStream);
         try (BufferedReader br = new BufferedReader(
                 new InputStreamReader(con.getInputStream(), StandardCharsets.UTF_8))) {
             StringBuilder response = new StringBuilder();
@@ -110,11 +110,11 @@ public class BookStoreController {
             while ((responseLine = br.readLine()) != null) {
                 response.append(responseLine.trim());
             }
-            if(responseLine == null)
+            if(response.toString().equals(null))
             {
                 return null;
             }
-            return Long.parseLong(responseLine);
+            return Long.parseLong(response.toString());
         }
     }
 
