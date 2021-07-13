@@ -26,6 +26,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
+import static com.ds.datastore.Utilities.*;
 
 @RestController
 public class BookStoreController {
@@ -97,7 +98,7 @@ public class BookStoreController {
     }
 
     private Long getLeader() throws Exception {
-        HttpURLConnection con = createConnection(hubUrl + "/leader");
+        HttpURLConnection con = createGetConnection(hubUrl + "/leader");
         DataInputStream inStream = (DataInputStream) con.getInputStream();
         Long leader = inStream.readLong();
         inStream.close();
