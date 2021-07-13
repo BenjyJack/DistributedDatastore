@@ -51,7 +51,7 @@ public class HubController {
                 con.setDoOutput(true);
                 con.connect();
                 int y = con.getResponseCode();
-                DataInputStream inputStream = (DataInputStream) con.getInputStream();
+                DataInputStream inputStream = new DataInputStream(con.getInputStream());
                 if (inputStream.readBoolean()) {
                     con.disconnect();
                     return String.valueOf(id);
