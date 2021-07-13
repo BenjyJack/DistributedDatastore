@@ -1,6 +1,5 @@
 package com.hub;
 
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.*;
@@ -11,7 +10,6 @@ import com.google.gson.JsonParser;
 
 import javax.annotation.PostConstruct;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -21,7 +19,7 @@ public class HubController {
 
     private final ServerHub hub;
     private final HubRepository repository;
-    private Long leader;
+    private String leader;
 
     public HubController(HubRepository repository) throws IOException {
         this.repository = repository;
@@ -43,7 +41,7 @@ public class HubController {
             this.hub.addServer(entry.getId(), entry.getServerAddress());
         }
     }
-    private Long findLeader() throws IOException {
+    private String findLeader() throws IOException {
         for(Long id: hub.getMap().keySet()) {
             URL url = new URL(hub.getMap().get(id) + "/ping");
             try {
@@ -56,7 +54,7 @@ public class HubController {
                 DataInputStream inputStream = (DataInputStream) con.getInputStream();
                 if (inputStream.readBoolean()) {
                     con.disconnect();
-                    return id;
+                    return String.valueOf(id);
                 }
             }
             catch(Exception ignored)
@@ -84,7 +82,7 @@ public class HubController {
         addNewServerToAllServers(newServerInfo);
         if(leader == null)
         {
-            leader = serverId;
+            leader = String.valueOf(serverId);
         }
 
         sendLeader();
@@ -100,8 +98,9 @@ public class HubController {
             con.setRequestMethod("PUT");
             con.setRequestProperty("Content-Type", "application/json");
             con.setDoOutput(true);
-            try(DataOutputStream os = (DataOutputStream) con.getOutputStream()) {
-                os.writeLong(leader);
+            try(OutputStream os = con.getOutputStream()) {
+                byte[] input = leader.getBytes(StandardCharsets.UTF_8);
+                os.write(input, 0, input.length);
             }
             int y = con.getResponseCode();
             con.disconnect();
@@ -116,9 +115,9 @@ public class HubController {
     }
 
     @GetMapping("/hub/leader")
-    protected Long getLeader(@RequestHeader String address) throws IOException {
-        if(leader == null){
-            System.out.println(address);
+    protected String getLeader(@RequestHeader(name = "referer") String address, @RequestHeader(name = "id") String id) throws IOException {
+        if(leader == null && !id.equals("null")){
+            leader = id;
         }
         return leader;
     }
