@@ -3,9 +3,7 @@ package com.hub;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.*;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -28,13 +26,11 @@ public class HubController {
     public HubController(HubRepository repository) throws IOException {
         this.repository = repository;
         this.hub = new ServerHub();
-        if(!repository.findAll().isEmpty())
-        {
-            leader = repository.findAll().get(0).getId();
+        if(!repository.findAll().isEmpty()) {
+            leader = findLeader();
             sendLeader();
         }
-        else
-        {
+        else {
             leader = null;
         }
 
@@ -46,6 +42,22 @@ public class HubController {
         for (HubEntry entry : servers) {
             this.hub.addServer(entry.getId(), entry.getServerAddress());
         }
+    }
+    private Long findLeader() throws IOException {
+        for(Long id: hub.getMap().keySet()) {
+            URL url = new URL(hub.getMap().get(id) + "/ping");
+            HttpURLConnection con = (HttpURLConnection) url.openConnection();
+            con.setRequestMethod("GET");
+            con.setRequestProperty("accept", "application/json");
+            con.setDoOutput(true);
+
+            DataInputStream inputStream = (DataInputStream) con.getInputStream();
+            if(inputStream.readBoolean())
+            {
+                return id;
+            }
+        }
+        return null;
     }
 
     @PostMapping("/hub")
