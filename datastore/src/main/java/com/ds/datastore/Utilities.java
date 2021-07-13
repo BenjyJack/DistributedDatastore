@@ -2,6 +2,7 @@ package com.ds.datastore;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -10,12 +11,15 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 
 public class Utilities {
+
     // For GET requests
-    public static HttpURLConnection createGetConnection(String address) throws Exception {
+    public static HttpURLConnection createGetConnection(String address, String serverAddress) throws Exception {
         URL url = new URL(address);
         HttpURLConnection con = (HttpURLConnection) url.openConnection();
         con.setRequestMethod("GET");
         con.setRequestProperty("accept", "application/json");
+
+        con.setRequestProperty("referer", serverAddress);
         con.setDoOutput(true);
         con.connect();
         int x = con.getResponseCode();

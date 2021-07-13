@@ -98,7 +98,7 @@ public class BookStoreController {
     }
 
     private Long getLeader() throws Exception {
-        HttpURLConnection con = createGetConnection(hubUrl + "/leader");
+        HttpURLConnection con = createGetConnection(hubUrl + "/leader", this.url);
         DataInputStream inStream = (DataInputStream) con.getInputStream();
         Long leader = inStream.readLong();
         inStream.close();
