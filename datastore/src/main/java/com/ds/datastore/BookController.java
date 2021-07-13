@@ -28,12 +28,14 @@ public class BookController {
     private final BookModelAssembler assembler;
     private final BookStoreRepository storeRepository;
     private ServerMap map;
+    private Leader leader;
 
-    public BookController(BookRepository repository, BookModelAssembler assembler, BookStoreRepository storeRepository, ServerMap map) {
+    public BookController(BookRepository repository, BookModelAssembler assembler, BookStoreRepository storeRepository, ServerMap map, Leader leader) {
         this.repository = repository;
         this.assembler = assembler;
         this.storeRepository = storeRepository;
         this.map = map;
+        this.leader = leader;
     }
 
     @PostMapping("/bookstores/{storeID}/books")

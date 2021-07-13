@@ -3,6 +3,8 @@ package com.hub;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.io.OutputStream;
 
 import com.google.gson.Gson;
@@ -21,10 +23,21 @@ public class HubController {
 
     private final ServerHub hub;
     private final HubRepository repository;
+    private Long leader;
 
-    public HubController(HubRepository repository){
+    public HubController(HubRepository repository) throws IOException {
         this.repository = repository;
         this.hub = new ServerHub();
+        if(!repository.findAll().isEmpty())
+        {
+            leader = repository.findAll().get(0).getId();
+            sendLeader();
+        }
+        else
+        {
+            leader = null;
+        }
+
     }
 
     @PostConstruct
@@ -50,13 +63,42 @@ public class HubController {
         String newServerInfo = storeServerInfoInString(serverId, address);
         this.hub.addServer(serverId, address);
         addNewServerToAllServers(newServerInfo);
+        if(leader == null)
+        {
+            leader = serverId;
+        }
+
+        sendLeader();
+
         return serverId;
     }
+
+    private void sendLeader() throws IOException {
+        for(String address : hub.getMap().values())
+        {
+            URL url = new URL(address + "/leader");
+            HttpURLConnection con = (HttpURLConnection) url.openConnection();
+            con.setRequestMethod("PUT");
+            con.setRequestProperty("Content-Type", "application/json");
+            con.setDoOutput(true);
+            try(DataOutputStream os = (DataOutputStream) con.getOutputStream()) {
+                os.writeLong(leader);
+            }
+            int y = con.getResponseCode();
+            con.disconnect();
+        }
+    }
+
 
     @GetMapping("/hub")
     protected String getMap() {
         Gson gson = new Gson();
         return gson.toJson(this.hub.getMap());
+    }
+
+    @GetMapping("/hub/leader")
+    protected Long getLeader() {
+        return leader;
     }
 
     private String parseAddressFromJsonString(String json) {
