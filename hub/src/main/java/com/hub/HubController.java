@@ -139,6 +139,9 @@ public class HubController {
         Long id = jsonObject.get("id").getAsLong();
         String address = jsonObject.get("address").getAsString();
         this.hub.addServer(id, address);
+        HubEntry entry = repository.getById(id);
+        entry.setServerAddress(address);
+        repository.save(entry);
         addNewServerToAllServers(json);
     }
 
