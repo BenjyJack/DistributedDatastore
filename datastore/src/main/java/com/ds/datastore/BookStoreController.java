@@ -66,7 +66,9 @@ public class BookStoreController {
                 registerWithHub();
             }
         }
+
         this.leader.setLeader(getLeader());
+
     }
 
     private void registerWithHub() throws Exception {
@@ -98,12 +100,22 @@ public class BookStoreController {
     }
 
     private Long getLeader() throws Exception {
-        HttpURLConnection con = createGetConnection(hubUrl + "/leader", this.url);
-        DataInputStream inStream = (DataInputStream) con.getInputStream();
-        Long leader = inStream.readLong();
-        inStream.close();
-        con.disconnect();
-        return leader;
+        HttpURLConnection con = createGetConnection(hubUrl + "/leader", this.url, id);
+        InputStream inStream = con.getInputStream();
+        InputStreamReader inStreamReader = new InputStreamReader(inStream);
+        try (BufferedReader br = new BufferedReader(
+                new InputStreamReader(con.getInputStream(), StandardCharsets.UTF_8))) {
+            StringBuilder response = new StringBuilder();
+            String responseLine = null;
+            while ((responseLine = br.readLine()) != null) {
+                response.append(responseLine.trim());
+            }
+            if(responseLine == null)
+            {
+                return null;
+            }
+            return Long.parseLong(responseLine);
+        }
     }
 
     @PutMapping("/bookstores/{storeID}/leader")
