@@ -51,9 +51,11 @@ public class HubController {
                 con.setRequestMethod("GET");
                 con.setRequestProperty("accept", "application/json");
                 con.setDoOutput(true);
-
+                con.connect();
+                int y = con.getResponseCode();
                 DataInputStream inputStream = (DataInputStream) con.getInputStream();
                 if (inputStream.readBoolean()) {
+                    con.disconnect();
                     return id;
                 }
             }
@@ -61,7 +63,7 @@ public class HubController {
             {
             }
         }
-        
+
         return null;
     }
 

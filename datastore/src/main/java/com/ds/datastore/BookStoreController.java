@@ -57,7 +57,6 @@ public class BookStoreController {
     @PostConstruct
     private void restartChangedOrNew() throws Exception {
         this.map.setMap(reclaimMap());
-        this.leader.setLeader(getLeader());
         List<BookStore> bookStoreList = storeRepository.findAll();
         if(!bookStoreList.isEmpty()) {
             BookStore bookStore = bookStoreList.get(0);
@@ -67,6 +66,7 @@ public class BookStoreController {
                 registerWithHub();
             }
         }
+        this.leader.setLeader(getLeader());
     }
 
     private void registerWithHub() throws Exception {
