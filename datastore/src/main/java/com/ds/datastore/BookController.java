@@ -20,6 +20,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URI;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -79,7 +80,7 @@ public class BookController {
 
     @PostMapping("bookstores/books")
     protected CollectionModel<EntityModel<Book>> multipleToMultiple(@RequestBody BookArray json) throws Exception {
-        if(leader.getLeader() != storeRepository.findAll().get(0).getServerId()){
+        if(!leader.getLeader().equals(storeRepository.findAll().get(0).getServerId())){
             return multipleToLeader(json);
         }
         List<EntityModel<Book>> entityModelList = new ArrayList<>();
@@ -98,27 +99,65 @@ public class BookController {
     }
 
     private CollectionModel<EntityModel<Book>> multipleToLeader(BookArray array) throws Exception {
-        HttpURLConnection con = createConnection(this.map.get(leader.getLeader()), "POST");
+        String address = new URL(this.map.get(leader.getLeader())).getHost();
         JsonArray jsonArray = new JsonArray();
         for (Book book : array.getBooks()) {
-            jsonArray.add(book.makeJson());
+            JsonObject jso = book.makeJson();
+            jso.addProperty("storeID", book.getStoreID());
+            jsonArray.add(jso);
         }
+        JsonObject elementedArray = new JsonObject();
+        elementedArray.add("books", jsonArray);
         Gson gson = new Gson();
-        String str = gson.toJson(jsonArray);
+        String str = gson.toJson(elementedArray);
+//        String str = "{\n" +
+//                "    \"books\" :[\n" +
+//                "        {\n" +
+//                "            \"title\": \"still named\",\n" +
+//                "            \"storeID\": 234234235\n" +
+//                "        },\n" +
+//                "        {\n" +
+//                "            \"title\": \"not sure what I want to call this\",\n" +
+//                "            \"storeID\": 101,\n" +
+//                "            \"price\": 8.00\n" +
+//                "        },\n" +
+//                "        {\n" +
+//                "            \"title\": \"another book\",\n" +
+//                "            \"author\": \"definitely someone\"\n" +
+//                "        },\n" +
+//                "        {\n" +
+//                "            \"title\" : \"booking-ness\",\n" +
+//                "            \"author\" : \"Person McMann\",\n" +
+//                "            \"storeID\": 101\n" +
+//                "        },\n" +
+//                "        {\n" +
+//                "            \"title\": \"Yonatan's fun time of StoryTelling\",\n" +
+//                "            \"author\" : \"Not Yonatan\",\n" +
+//                "            \"storeID\": 135\n" +
+//                "        },\n" +
+//                "        {\n" +
+//                "            \"title\":\"booking-ness\",\n" +
+//                "            \"author\":\"Person McMann\",\n" +
+//                "            \"storeID\": 102\n" +
+//                "        }\n" +
+//                "    ]\n" +
+//                "}";
+//        str = str.trim();
+        HttpURLConnection con = createConnection("http://" + address + "/bookstores/books", "POST");
         try(OutputStream os = con.getOutputStream()) {
             byte[] input = str.getBytes(StandardCharsets.UTF_8);
             os.write(input, 0, input.length);
         }
         int y = con.getResponseCode();
-        try(BufferedReader br = new BufferedReader(
-                new InputStreamReader(con.getInputStream(), StandardCharsets.UTF_8))) {
-            StringBuilder response = new StringBuilder();
-            String responseLine = null;
-            while ((responseLine = br.readLine()) != null) {
-                response.append(responseLine.trim());
-            }
-            System.out.println(response.toString());
-        }
+//        try(BufferedReader br = new BufferedReader(
+//                new InputStreamReader(con.getInputStream(), StandardCharsets.UTF_8))) {
+//            StringBuilder response = new StringBuilder();
+//            String responseLine = null;
+//            while ((responseLine = br.readLine()) != null) {
+//                response.append(responseLine.trim());
+//            }
+//            System.out.println(response.toString());
+//        }
         con.disconnect();
         return null;
     }
