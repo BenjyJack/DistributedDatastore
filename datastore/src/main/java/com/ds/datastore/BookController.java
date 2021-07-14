@@ -5,6 +5,7 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
@@ -14,9 +15,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URI;
-import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -75,6 +79,9 @@ public class BookController {
 
     @PostMapping("bookstores/books")
     protected CollectionModel<EntityModel<Book>> multipleToMultiple(@RequestBody BookArray json) throws Exception {
+        if(leader.getLeader() != storeRepository.findAll().get(0).getServerId()){
+            return multipleToLeader(json);
+        }
         List<EntityModel<Book>> entityModelList = new ArrayList<>();
         for (Book book: json.getBooks()) {
             if(book.getStoreID() == null || !this.map.containsKey(book.getStoreID())) {
@@ -88,6 +95,32 @@ public class BookController {
             entityModelList.add(assembler.toModel(book));
         }
         return CollectionModel.of(entityModelList, linkTo(methodOn(BookController.class)).withSelfRel());
+    }
+
+    private CollectionModel<EntityModel<Book>> multipleToLeader(BookArray array) throws Exception {
+        HttpURLConnection con = createConnection(this.map.get(leader.getLeader()), "POST");
+        JsonArray jsonArray = new JsonArray();
+        for (Book book : array.getBooks()) {
+            jsonArray.add(book.makeJson());
+        }
+        Gson gson = new Gson();
+        String str = gson.toJson(jsonArray);
+        try(OutputStream os = con.getOutputStream()) {
+            byte[] input = str.getBytes(StandardCharsets.UTF_8);
+            os.write(input, 0, input.length);
+        }
+        int y = con.getResponseCode();
+        try(BufferedReader br = new BufferedReader(
+                new InputStreamReader(con.getInputStream(), StandardCharsets.UTF_8))) {
+            StringBuilder response = new StringBuilder();
+            String responseLine = null;
+            while ((responseLine = br.readLine()) != null) {
+                response.append(responseLine.trim());
+            }
+            System.out.println(response.toString());
+        }
+        con.disconnect();
+        return null;
     }
 
     @GetMapping("/bookstores/{storeID}/books/{bookId}")
