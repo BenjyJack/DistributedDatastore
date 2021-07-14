@@ -60,15 +60,27 @@ public class BookController {
     @PostMapping("/bookstores/book")
     protected CollectionModel<EntityModel<Book>> oneBookToManyStores(@RequestBody Book book, @RequestParam List<String> id) throws Exception {
         List<EntityModel<Book>> entityList = new ArrayList<>();
-        for(String storeId: id)
-        {
-            book.setStoreID(Long.parseLong(storeId));
-            if(!this.map.containsKey(Long.parseLong(storeId))) continue;
-            HttpURLConnection con = createConnection(this.map.get(Long.parseLong(storeId)) + "/books", "POST");
-            Gson gson = new Gson();
-            JsonObject jso = book.makeJson();
-            outputJson(con, gson, jso);
-            entityList.add(assembler.toModel(new Book(book)));
+        if (!this.storeRepository.findAll().get(0).getServerId().equals(this.leader.getLeader())) {
+            String address = this.map.get(this.leader.getLeader());
+            address = address.substring(0,address.lastIndexOf("/") + 1) + "book?=" + id.toString().replaceAll("[\\[ \\]]", "");
+            HttpURLConnection con = Utilities.createConnection(address, "POST");
+            Utilities.outputJson(con, new Gson(), book.makeJson());
+            for (String storeId : id) {
+                book.setStoreID(Long.parseLong(storeId));
+                if(!this.map.containsKey(Long.parseLong(storeId))) continue;
+                entityList.add(assembler.toModel(new Book(book)));
+            }  
+        }else{
+            for(String storeId: id)
+            {
+                book.setStoreID(Long.parseLong(storeId));
+                if(!this.map.containsKey(Long.parseLong(storeId))) continue;
+                HttpURLConnection con = createConnection(this.map.get(Long.parseLong(storeId)) + "/books", "POST");
+                Gson gson = new Gson();
+                JsonObject jso = book.makeJson();
+                outputJson(con, gson, jso);
+                entityList.add(assembler.toModel(new Book(book)));
+            }
         }
         return CollectionModel.of(entityList, linkTo(methodOn(BookController.class).oneBookToManyStores(null, null)).withSelfRel());
     }
@@ -205,3 +217,5 @@ public class BookController {
         return ResponseEntity.status(HttpStatus.PERMANENT_REDIRECT).location(uri).build();
     }
 }
+
+//TODO Deal with where the leader gets deleted, and the singleton is therefore no longer reliable
