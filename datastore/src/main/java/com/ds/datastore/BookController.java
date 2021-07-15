@@ -4,9 +4,7 @@ import static com.ds.datastore.Utilities.*;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
+import com.google.gson.*;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.IanaLinkRelations;
@@ -15,13 +13,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URI;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -78,7 +74,7 @@ public class BookController {
         return CollectionModel.of(entityList, linkTo(methodOn(BookController.class).oneBookToManyStores(null, null)).withSelfRel());
     }
 
-    @PostMapping("bookstores/books")
+    @PostMapping("/bookstores/books")
     protected CollectionModel<EntityModel<Book>> multipleToMultiple(@RequestBody BookArray json) throws Exception {
         if(!leader.getLeader().equals(storeRepository.findAll().get(0).getServerId())){
             return multipleToLeader(json);
@@ -99,7 +95,8 @@ public class BookController {
     }
 
     private CollectionModel<EntityModel<Book>> multipleToLeader(BookArray array) throws Exception {
-        String address = new URL(this.map.get(leader.getLeader())).getHost();
+        String address = this.map.get(leader.getLeader());
+        address = address.substring(0,address.lastIndexOf("/") + 1) + "books";
         JsonArray jsonArray = new JsonArray();
         for (Book book : array.getBooks()) {
             JsonObject jso = book.makeJson();
@@ -110,56 +107,22 @@ public class BookController {
         elementedArray.add("books", jsonArray);
         Gson gson = new Gson();
         String str = gson.toJson(elementedArray);
-//        String str = "{\n" +
-//                "    \"books\" :[\n" +
-//                "        {\n" +
-//                "            \"title\": \"still named\",\n" +
-//                "            \"storeID\": 234234235\n" +
-//                "        },\n" +
-//                "        {\n" +
-//                "            \"title\": \"not sure what I want to call this\",\n" +
-//                "            \"storeID\": 101,\n" +
-//                "            \"price\": 8.00\n" +
-//                "        },\n" +
-//                "        {\n" +
-//                "            \"title\": \"another book\",\n" +
-//                "            \"author\": \"definitely someone\"\n" +
-//                "        },\n" +
-//                "        {\n" +
-//                "            \"title\" : \"booking-ness\",\n" +
-//                "            \"author\" : \"Person McMann\",\n" +
-//                "            \"storeID\": 101\n" +
-//                "        },\n" +
-//                "        {\n" +
-//                "            \"title\": \"Yonatan's fun time of StoryTelling\",\n" +
-//                "            \"author\" : \"Not Yonatan\",\n" +
-//                "            \"storeID\": 135\n" +
-//                "        },\n" +
-//                "        {\n" +
-//                "            \"title\":\"booking-ness\",\n" +
-//                "            \"author\":\"Person McMann\",\n" +
-//                "            \"storeID\": 102\n" +
-//                "        }\n" +
-//                "    ]\n" +
-//                "}";
-//        str = str.trim();
-        HttpURLConnection con = createConnection("http://" + address + "/bookstores/books", "POST");
-        try(OutputStream os = con.getOutputStream()) {
-            byte[] input = str.getBytes(StandardCharsets.UTF_8);
-            os.write(input, 0, input.length);
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(new URI(address))
+                .headers("Content-Type", "application/json;charset=UTF-8")
+                .POST(HttpRequest.BodyPublishers.ofString(str))
+                .build();
+        HttpResponse<String> response = HttpClient.newBuilder()
+                .build()
+                .send(request, HttpResponse.BodyHandlers.ofString());
+        JsonObject jso = new JsonParser().parse(response.body()).getAsJsonObject();
+        JsonArray bookArray = jso.getAsJsonObject("_embedded").getAsJsonArray("bookList");
+        ArrayList<EntityModel<Book>> entityModels = new ArrayList<>(bookArray.size());
+        for (JsonElement element: bookArray) {
+            Book book = new Book(element.getAsJsonObject());
+            entityModels.add(assembler.toModel(book));
         }
-        int y = con.getResponseCode();
-//        try(BufferedReader br = new BufferedReader(
-//                new InputStreamReader(con.getInputStream(), StandardCharsets.UTF_8))) {
-//            StringBuilder response = new StringBuilder();
-//            String responseLine = null;
-//            while ((responseLine = br.readLine()) != null) {
-//                response.append(responseLine.trim());
-//            }
-//            System.out.println(response.toString());
-//        }
-        con.disconnect();
-        return null;
+        return  CollectionModel.of(entityModels, linkTo(methodOn(BookController.class)).withSelfRel());
     }
 
     @GetMapping("/bookstores/{storeID}/books/{bookId}")

@@ -30,7 +30,10 @@ public class Utilities {
         URL url = new URL(address);
         HttpURLConnection con = (HttpURLConnection) url.openConnection();
         con.setRequestMethod(request);
-        con.setRequestProperty("Content-Type", "application/json");
+        con.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+        con.setRequestProperty("accept", "*/*");
+        con.setRequestProperty("accept-encoding", "gzip,deflate,br");
+        con.setUseCaches(false);
         con.setDoOutput(true);
         con.connect();
         return con;
