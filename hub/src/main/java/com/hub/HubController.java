@@ -10,9 +10,13 @@ import com.google.gson.JsonParser;
 
 import javax.annotation.PostConstruct;
 import java.net.HttpURLConnection;
+import java.net.InetAddress;
 import java.net.URL;
+import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
 @RestController
 public class HubController {
@@ -31,6 +35,7 @@ public class HubController {
         else {
             leader = null;
         }
+        randomlyCheck();
 
     }
 
@@ -118,6 +123,7 @@ public class HubController {
     protected String getLeader(@RequestHeader(name = "referer") String address, @RequestHeader(name = "id") String id) throws IOException {
         if(leader == null && !id.equals("null")){
             leader = id;
+            randomlyCheck();
         }
         return leader;
     }
@@ -191,4 +197,30 @@ public class HubController {
         }
     }
 
+    private void randomlyCheck() throws IOException {
+
+        while(leader != null) {
+            Timer timer = new Timer();
+            TimerTask timerTask = new TimerTask() {
+                @Override
+                public void run() {
+                    InetAddress leaderAddress = null;
+                    try {
+                        leaderAddress = InetAddress.getByName(hub.getAddress(Long.parseLong(leader)));
+                    } catch (UnknownHostException e) {
+                        e.printStackTrace();
+                    }
+                    try {
+                        if (!leaderAddress.isReachable(45)) {
+                            findLeader();
+                            sendLeader();
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            };
+            timer.schedule(timerTask, 0, 30000);
+        }
+    }
 }
