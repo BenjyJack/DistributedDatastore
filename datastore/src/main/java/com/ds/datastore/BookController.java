@@ -4,8 +4,7 @@ import static com.ds.datastore.Utilities.*;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
+import com.google.gson.*;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.IanaLinkRelations;
@@ -16,7 +15,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.HttpURLConnection;
 import java.net.URI;
-import java.net.URL;
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -60,21 +59,42 @@ public class BookController {
     @PostMapping("/bookstores/book")
     protected CollectionModel<EntityModel<Book>> oneBookToManyStores(@RequestBody Book book, @RequestParam List<String> id) throws Exception {
         List<EntityModel<Book>> entityList = new ArrayList<>();
-        for(String storeId: id)
-        {
-            book.setStoreID(Long.parseLong(storeId));
-            if(!this.map.containsKey(Long.parseLong(storeId))) continue;
-            HttpURLConnection con = createConnection(this.map.get(Long.parseLong(storeId)) + "/books", "POST");
+        if (!this.storeRepository.findAll().get(0).getServerId().equals(this.leader.getLeader())) {
+            String address = this.map.get(this.leader.getLeader());
+            address = address.substring(0,address.lastIndexOf("/") + 1) + "book?id=" + id.toString().replaceAll("[\\[ \\]]", "");
             Gson gson = new Gson();
-            JsonObject jso = book.makeJson();
-            outputJson(con, gson, jso);
-            entityList.add(assembler.toModel(new Book(book)));
+            String json = gson.toJson(book.makeJson());
+            HttpResponse<String> response = getPostConnectionJava9(address, json);
+            JsonObject jso = new JsonParser().parse(response.body()).getAsJsonObject();
+            JsonArray bookArray = jso.getAsJsonObject("_embedded").getAsJsonArray("bookList");
+            for (JsonElement element: bookArray) {
+                Book newBook = new Book(element.getAsJsonObject());
+                entityList.add(assembler.toModel(newBook));
+            }
+        }else{
+            for(String storeId: id)
+            {
+                book.setStoreID(Long.parseLong(storeId));
+                if(!this.map.containsKey(Long.parseLong(storeId))) continue;
+                String address = this.map.get(Long.parseLong(storeId)) + "/books";
+                Gson gson = new Gson();
+                JsonObject jso = book.makeJson();
+                String json = gson.toJson(jso);
+                HttpResponse<String> response = getPostConnectionJava9(address, json);
+                if(response.statusCode() != 201){
+                    continue;
+                }
+                entityList.add(assembler.toModel(new Book(book)));
+            }
         }
         return CollectionModel.of(entityList, linkTo(methodOn(BookController.class).oneBookToManyStores(null, null)).withSelfRel());
     }
 
-    @PostMapping("bookstores/books")
+    @PostMapping("/bookstores/books")
     protected CollectionModel<EntityModel<Book>> multipleToMultiple(@RequestBody BookArray json) throws Exception {
+        if(!leader.getLeader().equals(storeRepository.findAll().get(0).getServerId())){
+            return multipleToLeader(json);
+        }
         List<EntityModel<Book>> entityModelList = new ArrayList<>();
         for (Book book: json.getBooks()) {
             if(book.getStoreID() == null || !this.map.containsKey(book.getStoreID())) {
@@ -88,6 +108,30 @@ public class BookController {
             entityModelList.add(assembler.toModel(book));
         }
         return CollectionModel.of(entityModelList, linkTo(methodOn(BookController.class)).withSelfRel());
+    }
+
+    private CollectionModel<EntityModel<Book>> multipleToLeader(BookArray array) throws Exception {
+        String address = this.map.get(leader.getLeader());
+        address = address.substring(0,address.lastIndexOf("/") + 1) + "books";
+        JsonArray jsonArray = new JsonArray();
+        for (Book book : array.getBooks()) {
+            JsonObject jso = book.makeJson();
+            jso.addProperty("storeID", book.getStoreID());
+            jsonArray.add(jso);
+        }
+        JsonObject elementedArray = new JsonObject();
+        elementedArray.add("books", jsonArray);
+        Gson gson = new Gson();
+        String str = gson.toJson(elementedArray);
+        HttpResponse<String> response = getPostConnectionJava9(address, str);
+        JsonObject jso = new JsonParser().parse(response.body()).getAsJsonObject();
+        JsonArray bookArray = jso.getAsJsonObject("_embedded").getAsJsonArray("bookList");
+        ArrayList<EntityModel<Book>> entityModels = new ArrayList<>();
+        for (JsonElement element: bookArray) {
+            Book book = new Book(element.getAsJsonObject());
+            entityModels.add(assembler.toModel(book));
+        }
+        return  CollectionModel.of(entityModels, linkTo(methodOn(BookController.class)).withSelfRel());
     }
 
     @GetMapping("/bookstores/{storeID}/books/{bookId}")
@@ -205,3 +249,5 @@ public class BookController {
         return ResponseEntity.status(HttpStatus.PERMANENT_REDIRECT).location(uri).build();
     }
 }
+
+//TODO Deal with where the leader gets deleted, and the singleton is therefore no longer reliable
