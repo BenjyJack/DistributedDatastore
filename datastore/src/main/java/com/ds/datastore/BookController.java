@@ -61,15 +61,46 @@ public class BookController {
     @PostMapping("/bookstores/book")
     protected CollectionModel<EntityModel<Book>> oneBookToManyStores(@RequestBody Book book, @RequestParam List<String> id) throws Exception {
         List<EntityModel<Book>> entityList = new ArrayList<>();
-        for(String storeId: id)
-        {
-            book.setStoreID(Long.parseLong(storeId));
-            if(!this.map.containsKey(Long.parseLong(storeId))) continue;
-            HttpURLConnection con = createConnection(this.map.get(Long.parseLong(storeId)) + "/books", "POST");
+        if (!this.storeRepository.findAll().get(0).getServerId().equals(this.leader.getLeader())) {
+            String address = this.map.get(this.leader.getLeader());
+            address = address.substring(0,address.lastIndexOf("/") + 1) + "book?id=" + id.toString().replaceAll("[\\[ \\]]", "");
             Gson gson = new Gson();
-            JsonObject jso = book.makeJson();
-            outputJson(con, gson, jso);
-            entityList.add(assembler.toModel(new Book(book)));
+            String json = gson.toJson(book.makeJson());
+                    HttpRequest request = HttpRequest.newBuilder()
+                    .uri(new URI(address))
+                    .headers("Content-Type", "application/json;charset=UTF-8")
+                    .POST(HttpRequest.BodyPublishers.ofString(json))
+                    .build();
+            HttpResponse<String> response = HttpClient.newBuilder()
+                    .build()
+                    .send(request, HttpResponse.BodyHandlers.ofString());
+            JsonObject jso = new JsonParser().parse(response.body()).getAsJsonObject();
+            JsonArray bookArray = jso.getAsJsonObject("_embedded").getAsJsonArray("bookList");
+            for (JsonElement element: bookArray) {
+                Book newBook = new Book(element.getAsJsonObject());
+                entityList.add(assembler.toModel(newBook));
+            }
+        }else{
+            for(String storeId: id)
+            {
+                book.setStoreID(Long.parseLong(storeId));
+                if(!this.map.containsKey(Long.parseLong(storeId))) continue;
+                Gson gson = new Gson();
+                JsonObject jso = book.makeJson();
+                String json = gson.toJson(jso);
+                HttpRequest request = HttpRequest.newBuilder()
+                    .uri(new URI(this.map.get(Long.parseLong(storeId)) + "/books"))
+                    .headers("Content-Type", "application/json;charset=UTF-8")
+                    .POST(HttpRequest.BodyPublishers.ofString(json))
+                    .build();
+                HttpResponse<String> response = HttpClient.newBuilder()
+                    .build()
+                    .send(request, HttpResponse.BodyHandlers.ofString());
+                if(response.statusCode() != 201){
+                    continue;
+                }
+                entityList.add(assembler.toModel(new Book(book)));
+            }
         }
         return CollectionModel.of(entityList, linkTo(methodOn(BookController.class).oneBookToManyStores(null, null)).withSelfRel());
     }
@@ -240,3 +271,5 @@ public class BookController {
         return ResponseEntity.status(HttpStatus.PERMANENT_REDIRECT).location(uri).build();
     }
 }
+
+//TODO Deal with where the leader gets deleted, and the singleton is therefore no longer reliable
