@@ -39,6 +39,16 @@ public class Book {
         this.storeID = book.getStoreID();
         this.price = book.getPrice();
     }
+    public Book(JsonObject jObj){
+        this.language=(!jObj.get("language").isJsonNull() ? Language.valueOf(jObj.get("language").getAsString()) :null);
+        this.title = (!jObj.get("title").isJsonNull() ? jObj.get("title").getAsString():null);
+        this.author = (!jObj.get("author").isJsonNull() ? jObj.get("author").getAsString():null);
+        this.description = (!jObj.get("description").isJsonNull() ? jObj.get("description").getAsString():null);
+        this.storeID = (!jObj.get("storeID").isJsonNull() ? jObj.get("storeID").getAsLong():null);
+        this.price = (!jObj.get("price").isJsonNull() ? jObj.get("price").getAsDouble():-1.0);
+        this.category = (!jObj.get("category").isJsonNull() ? jObj.get("category").getAsString() : null);
+    }
+
 
     public void setStoreID(Long storeID) {
         this.storeID = storeID;
