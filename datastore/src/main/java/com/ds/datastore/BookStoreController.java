@@ -236,8 +236,6 @@ public class BookStoreController {
         return CollectionModel.of(entModelList, linkTo(methodOn(BookStoreController.class).getAllBooksFromBookStores(null)).withSelfRel());
     }
 
-
-
     @PutMapping("/bookstores/{storeID}")
     protected BookStore updateBookStore(@RequestBody BookStore newBookStore, @PathVariable Long storeID) {
         return storeRepository.findById(storeID)
@@ -343,4 +341,3 @@ public class BookStoreController {
     }
 
 }
-

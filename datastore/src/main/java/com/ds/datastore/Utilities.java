@@ -6,7 +6,12 @@ import com.google.gson.JsonObject;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 
 public class Utilities {
@@ -37,6 +42,18 @@ public class Utilities {
         con.setDoOutput(true);
         con.connect();
         return con;
+    }
+
+
+    public static HttpResponse<String> getPostConnectionJava9(String address, String json) throws URISyntaxException, java.io.IOException, InterruptedException {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(new URI(address))
+                .headers("Content-Type", "application/json;charset=UTF-8")
+                .POST(HttpRequest.BodyPublishers.ofString(json))
+                .build();
+        return HttpClient.newBuilder()
+                .build()
+                .send(request, HttpResponse.BodyHandlers.ofString());
     }
 
     public static void outputJson(HttpURLConnection con, Gson gson, JsonObject json) throws IOException {

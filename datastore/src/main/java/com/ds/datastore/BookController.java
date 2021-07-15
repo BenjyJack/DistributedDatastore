@@ -15,8 +15,6 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.HttpURLConnection;
 import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
@@ -66,14 +64,7 @@ public class BookController {
             address = address.substring(0,address.lastIndexOf("/") + 1) + "book?id=" + id.toString().replaceAll("[\\[ \\]]", "");
             Gson gson = new Gson();
             String json = gson.toJson(book.makeJson());
-                    HttpRequest request = HttpRequest.newBuilder()
-                    .uri(new URI(address))
-                    .headers("Content-Type", "application/json;charset=UTF-8")
-                    .POST(HttpRequest.BodyPublishers.ofString(json))
-                    .build();
-            HttpResponse<String> response = HttpClient.newBuilder()
-                    .build()
-                    .send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = getPostConnectionJava9(address, json);
             JsonObject jso = new JsonParser().parse(response.body()).getAsJsonObject();
             JsonArray bookArray = jso.getAsJsonObject("_embedded").getAsJsonArray("bookList");
             for (JsonElement element: bookArray) {
@@ -85,17 +76,11 @@ public class BookController {
             {
                 book.setStoreID(Long.parseLong(storeId));
                 if(!this.map.containsKey(Long.parseLong(storeId))) continue;
+                String address = this.map.get(Long.parseLong(storeId)) + "/books";
                 Gson gson = new Gson();
                 JsonObject jso = book.makeJson();
                 String json = gson.toJson(jso);
-                HttpRequest request = HttpRequest.newBuilder()
-                    .uri(new URI(this.map.get(Long.parseLong(storeId)) + "/books"))
-                    .headers("Content-Type", "application/json;charset=UTF-8")
-                    .POST(HttpRequest.BodyPublishers.ofString(json))
-                    .build();
-                HttpResponse<String> response = HttpClient.newBuilder()
-                    .build()
-                    .send(request, HttpResponse.BodyHandlers.ofString());
+                HttpResponse<String> response = getPostConnectionJava9(address, json);
                 if(response.statusCode() != 201){
                     continue;
                 }
@@ -138,17 +123,10 @@ public class BookController {
         elementedArray.add("books", jsonArray);
         Gson gson = new Gson();
         String str = gson.toJson(elementedArray);
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(new URI(address))
-                .headers("Content-Type", "application/json;charset=UTF-8")
-                .POST(HttpRequest.BodyPublishers.ofString(str))
-                .build();
-        HttpResponse<String> response = HttpClient.newBuilder()
-                .build()
-                .send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = getPostConnectionJava9(address, str);
         JsonObject jso = new JsonParser().parse(response.body()).getAsJsonObject();
         JsonArray bookArray = jso.getAsJsonObject("_embedded").getAsJsonArray("bookList");
-        ArrayList<EntityModel<Book>> entityModels = new ArrayList<>(bookArray.size());
+        ArrayList<EntityModel<Book>> entityModels = new ArrayList<>();
         for (JsonElement element: bookArray) {
             Book book = new Book(element.getAsJsonObject());
             entityModels.add(assembler.toModel(book));
