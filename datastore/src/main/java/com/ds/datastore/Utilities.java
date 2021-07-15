@@ -2,7 +2,6 @@ package com.ds.datastore;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-import org.springframework.beans.factory.annotation.Value;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -31,7 +30,10 @@ public class Utilities {
         URL url = new URL(address);
         HttpURLConnection con = (HttpURLConnection) url.openConnection();
         con.setRequestMethod(request);
-        con.setRequestProperty("Content-Type", "application/json");
+        con.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+        con.setRequestProperty("accept", "*/*");
+        con.setRequestProperty("accept-encoding", "gzip,deflate,br");
+        con.setUseCaches(false);
         con.setDoOutput(true);
         con.connect();
         return con;

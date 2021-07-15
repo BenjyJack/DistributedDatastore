@@ -18,8 +18,8 @@
             "mainClass": "com.ds.datastore.DatastoreApplication",
             "projectName": "datastore",
             "env": {"ADDRESS":"http://a02ce38c41d9.ngrok.io",
-                "HUB":"http://108.35.72.227:8080/hub",
-                "PORT": "8081"}
+            "HUB":"http://108.35.72.227:8080/hub",
+            "PORT": "8081"}
         },
         {
             "type": "java",
