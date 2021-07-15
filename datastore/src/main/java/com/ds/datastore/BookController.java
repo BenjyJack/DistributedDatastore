@@ -86,10 +86,20 @@ public class BookController {
             {
                 book.setStoreID(Long.parseLong(storeId));
                 if(!this.map.containsKey(Long.parseLong(storeId))) continue;
-                HttpURLConnection con = createConnection(this.map.get(Long.parseLong(storeId)) + "/books", "POST");
                 Gson gson = new Gson();
                 JsonObject jso = book.makeJson();
-                outputJson(con, gson, jso);
+                String json = gson.toJson(jso);
+                HttpRequest request = HttpRequest.newBuilder()
+                    .uri(new URI(this.map.get(Long.parseLong(storeId)) + "/books"))
+                    .headers("Content-Type", "application/json;charset=UTF-8")
+                    .POST(HttpRequest.BodyPublishers.ofString(json))
+                    .build();
+                HttpResponse<String> response = HttpClient.newBuilder()
+                    .build()
+                    .send(request, HttpResponse.BodyHandlers.ofString());
+                if(response.statusCode() != 201){
+                    continue;
+                }
                 entityList.add(assembler.toModel(new Book(book)));
             }
         }
