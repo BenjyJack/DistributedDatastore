@@ -1,5 +1,7 @@
 package com.hub;
 
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.*;
@@ -10,13 +12,18 @@ import com.google.gson.JsonParser;
 
 import javax.annotation.PostConstruct;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 
 
 @RestController
+@EnableScheduling
 public class HubController {
 
     private final ServerHub hub;
@@ -33,7 +40,6 @@ public class HubController {
         else {
             leader = null;
         }
-
     }
 
     @PostConstruct
@@ -43,27 +49,27 @@ public class HubController {
             this.hub.addServer(entry.getId(), entry.getServerAddress());
         }
     }
+
     protected String findLeader() throws IOException {
+        leader = null;
         for(Long id: hub.getMap().keySet()) {
-            URL url = new URL(hub.getMap().get(id) + "/ping");
             try {
-                HttpURLConnection con = (HttpURLConnection) url.openConnection();
-                con.setRequestMethod("GET");
-                con.setRequestProperty("accept", "application/json");
-                con.setDoOutput(true);
-                con.connect();
-                int y = con.getResponseCode();
-                DataInputStream inputStream = new DataInputStream(con.getInputStream());
-                if (inputStream.readBoolean()) {
-                    con.disconnect();
-                    return String.valueOf(id);
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(new URI(this.hub.getAddress(id) + "/ping"))
+                        .headers("Content-Type", "application/json;charset=UTF-8")
+                        .GET()
+                        .build();
+                HttpResponse<String> response = HttpClient.newBuilder()
+                        .build()
+                        .send(request, HttpResponse.BodyHandlers.ofString());
+                if(response.body().equals("true")){
+                    leader = String.valueOf(id);
+                    return leader;
                 }
             }
-            catch(Exception ignored)
-            {
+            catch(Exception ignored) {
             }
         }
-
         return null;
     }
     protected String basicGetLeader(){
@@ -73,14 +79,12 @@ public class HubController {
     @PostMapping("/hub")
     protected Long addServer(@RequestBody String json) throws Exception {
         String address = parseAddressFromJsonString(json);
-
         HubEntry server = new HubEntry();
         server.setServerAddress(address);
         repository.save(server);
         address = address + server.getId();
         server.setServerAddress(address);
         repository.save(server);
-
         Long serverId = server.getId();
         String newServerInfo = storeServerInfoInString(serverId, address);
         this.hub.addServer(serverId, address);
@@ -89,9 +93,7 @@ public class HubController {
         {
             leader = String.valueOf(serverId);
         }
-
         sendLeader();
-
         return serverId;
     }
 
@@ -112,6 +114,24 @@ public class HubController {
         }
     }
 
+    @Scheduled(fixedDelay = 3000)
+    protected void randomlyCheck() throws Exception {
+        if(this.leader != null){
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(new URI(this.hub.getAddress(Long.parseLong(leader)) + "/ping"))
+                    .headers("Content-Type", "application/json;charset=UTF-8")
+                    .GET()
+                    .build();
+            HttpResponse<String> response = HttpClient.newBuilder()
+                    .build()
+                    .send(request, HttpResponse.BodyHandlers.ofString());
+            if(!response.body().equals("true")){
+                findLeader();
+                if(leader != null) sendLeader();
+            }
+        }else findLeader();
+        System.out.println(leader);
+    }
 
     @GetMapping("/hub")
     protected String getMap() {
