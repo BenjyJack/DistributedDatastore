@@ -18,6 +18,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 
@@ -114,12 +115,13 @@ public class HubController {
         }
     }
 
-    @Scheduled(fixedDelay = 3000)
+    @Scheduled(fixedDelay = 60000)
     protected void randomlyCheck() throws Exception {
         if(this.leader != null){
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(new URI(this.hub.getAddress(Long.parseLong(leader)) + "/ping"))
                     .headers("Content-Type", "application/json;charset=UTF-8")
+                    .timeout(Duration.ofMillis(300))
                     .GET()
                     .build();
             HttpResponse<String> response = HttpClient.newBuilder()
@@ -130,7 +132,6 @@ public class HubController {
                 if(leader != null) sendLeader();
             }
         }else findLeader();
-        System.out.println(leader);
     }
 
     @GetMapping("/hub")
