@@ -76,12 +76,7 @@ public class BookStoreController {
         JsonObject json = new JsonObject();
         json.addProperty("id", this.id);
         json.addProperty("address", this.url + "/bookstores/" + this.id);
-        String str = gson.toJson(json);
-        try(OutputStream os = con.getOutputStream()) {
-            byte[] input = str.getBytes(StandardCharsets.UTF_8);
-            os.write(input, 0, input.length);
-        }
-        int y = con.getResponseCode();
+        outputJson(con, gson, json);
         con.disconnect();
     }
 
@@ -100,8 +95,6 @@ public class BookStoreController {
 
     private Long getLeader() throws Exception {
         HttpURLConnection con = createGetConnection(hubUrl + "/leader", this.url, id);
-        //InputStream inStream = con.getInputStream();
-        //InputStreamReader inStreamReader = new InputStreamReader(inStream);
         try (BufferedReader br = new BufferedReader(
                 new InputStreamReader(con.getInputStream(), StandardCharsets.UTF_8))) {
             StringBuilder response = new StringBuilder();

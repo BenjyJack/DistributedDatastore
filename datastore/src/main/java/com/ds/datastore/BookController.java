@@ -56,15 +56,20 @@ public class BookController {
         }     
     }
 
+    private boolean amILeader(){
+        return this.storeRepository.findAll().get(0).getServerId().equals(this.leader.getLeader());
+    }
+
     @PostMapping("/bookstores/book")
     protected CollectionModel<EntityModel<Book>> oneBookToManyStores(@RequestBody Book book, @RequestParam List<String> id) throws Exception {
         List<EntityModel<Book>> entityList = new ArrayList<>();
-        if (!this.storeRepository.findAll().get(0).getServerId().equals(this.leader.getLeader())) {
+        if (!amILeader()) {
             String address = this.map.get(this.leader.getLeader());
-            address = address.substring(0,address.lastIndexOf("/") + 1) + "book?id=" + id.toString().replaceAll("[\\[ \\]]", "");
+            address = removeIDNum(address) + "book?id=" + String.join(",", id);
             Gson gson = new Gson();
             String json = gson.toJson(book.makeJson());
             HttpResponse<String> response = getPostConnectionJava9(address, json);
+            if(response.statusCode() != 200) throw new Exception();
             JsonObject jso = new JsonParser().parse(response.body()).getAsJsonObject();
             JsonArray bookArray = jso.getAsJsonObject("_embedded").getAsJsonArray("bookList");
             for (JsonElement element: bookArray) {
@@ -92,7 +97,7 @@ public class BookController {
 
     @PostMapping("/bookstores/books")
     protected CollectionModel<EntityModel<Book>> multipleToMultiple(@RequestBody BookArray json) throws Exception {
-        if(!leader.getLeader().equals(storeRepository.findAll().get(0).getServerId())){
+        if(!amILeader()){
             return multipleToLeader(json);
         }
         List<EntityModel<Book>> entityModelList = new ArrayList<>();
@@ -110,9 +115,13 @@ public class BookController {
         return CollectionModel.of(entityModelList, linkTo(methodOn(BookController.class)).withSelfRel());
     }
 
+    private String removeIDNum(String address){
+        return address.substring(0,address.lastIndexOf("/") + 1);
+    }
+
     private CollectionModel<EntityModel<Book>> multipleToLeader(BookArray array) throws Exception {
         String address = this.map.get(leader.getLeader());
-        address = address.substring(0,address.lastIndexOf("/") + 1) + "books";
+        address = removeIDNum(address) + "books";
         JsonArray jsonArray = new JsonArray();
         for (Book book : array.getBooks()) {
             JsonObject jso = book.makeJson();
@@ -124,6 +133,7 @@ public class BookController {
         Gson gson = new Gson();
         String str = gson.toJson(elementedArray);
         HttpResponse<String> response = getPostConnectionJava9(address, str);
+        if(response.statusCode() != 200) throw new Exception();
         JsonObject jso = new JsonParser().parse(response.body()).getAsJsonObject();
         JsonArray bookArray = jso.getAsJsonObject("_embedded").getAsJsonArray("bookList");
         ArrayList<EntityModel<Book>> entityModels = new ArrayList<>();
@@ -249,5 +259,3 @@ public class BookController {
         return ResponseEntity.status(HttpStatus.PERMANENT_REDIRECT).location(uri).build();
     }
 }
-
-//TODO Deal with where the leader gets deleted, and the singleton is therefore no longer reliable

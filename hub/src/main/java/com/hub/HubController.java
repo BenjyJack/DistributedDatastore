@@ -124,14 +124,22 @@ public class HubController {
                     .timeout(Duration.ofMillis(300))
                     .GET()
                     .build();
-            HttpResponse<String> response = HttpClient.newBuilder()
-                    .build()
-                    .send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = null;
+            try{
+                response = HttpClient.newBuilder()
+                        .build()
+                        .send(request, HttpResponse.BodyHandlers.ofString());
+            }catch(Exception e){
+                findLeader();
+            }
             if(!response.body().equals("true")){
                 findLeader();
                 if(leader != null) sendLeader();
             }
-        }else findLeader();
+        }else{
+            findLeader();
+            if(leader != null) sendLeader();
+        }
     }
 
     @GetMapping("/hub")
