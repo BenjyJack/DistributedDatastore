@@ -163,17 +163,14 @@ public class HubController {
     private void addNewServerToAllServers(String serverInfo) throws Exception {
         for (Long id : this.hub.getMap().keySet()) {
             //Send the newly created server to the pre-existing servers
-            URL url = new URL(this.hub.getAddress(id));
-            HttpURLConnection con = (HttpURLConnection) url.openConnection();
-            con.setRequestMethod("POST");
-            con.setRequestProperty("Content-Type", "application/json");
-            con.setDoOutput(true);
-            try(OutputStream os = con.getOutputStream()) {
-                byte[] input = serverInfo.getBytes(StandardCharsets.UTF_8);
-                os.write(input, 0, input.length);
-            }
-            int y = con.getResponseCode();
-            con.disconnect();
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(new URI(this.hub.getAddress(id)))
+                    .headers("Content-Type", "application/json;charset=UTF-8")
+                    .POST(HttpRequest.BodyPublishers.ofString(serverInfo))
+                    .build();
+            HttpClient.newBuilder()
+                    .build()
+                    .send(request, HttpResponse.BodyHandlers.ofString());
         }
     }
 
@@ -195,23 +192,14 @@ public class HubController {
         if(!this.hub.removeServer(serverID)) return;
         repository.deleteById(serverID);
         for (Long id : this.hub.getMap().keySet()) {
-            URL url = new URL(this.hub.getAddress(id));
-            url = new URL("http://" + url.getHost() + "/bookstores/map");
-            HttpURLConnection con = (HttpURLConnection) url.openConnection();
-            con.setRequestMethod("DELETE");
-            con.setRequestProperty("Content-Type", "application/json");
-            con.setDoOutput(true);
-            Gson gson = new Gson();
-            JsonObject json = new JsonObject();
-            json.addProperty("id", serverID);
-            String str = gson.toJson(json);
-            try(OutputStream os = con.getOutputStream()) {
-                byte[] input =str.getBytes(StandardCharsets.UTF_8);
-                os.write(input, 0, input.length);
-            }
-            int y = con.getResponseCode();
-            System.out.println(y);
-            con.disconnect();
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(new URI(this.hub.getAddress(id)))
+                    .headers("Content-Type", "application/json;charset=UTF-8")
+                    .DELETE()
+                    .build();
+            HttpClient.newBuilder()
+                    .build()
+                    .send(request, HttpResponse.BodyHandlers.ofString());
         }
         if(serverID.equals(Long.parseLong(leader))){
             findLeader();
