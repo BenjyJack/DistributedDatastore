@@ -6,6 +6,7 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 import java.io.*;
 import java.lang.reflect.Type;
 import java.net.*;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -71,43 +72,23 @@ public class BookStoreController {
     }
 
     private void registerWithHub() throws Exception {
-        HttpURLConnection con = createConnection(hubUrl, "PUT");
-        Gson gson = new Gson();
         JsonObject json = new JsonObject();
         json.addProperty("id", this.id);
         json.addProperty("address", this.url + "/bookstores/" + this.id);
-        outputJson(con, gson, json);
-        con.disconnect();
+        createPutConnection(hubUrl, json);
     }
 
     private HashMap<Long, String> reclaimMap() throws Exception {
-        HttpURLConnection con = createConnection(hubUrl);
-        InputStream inStream = con.getInputStream();
-        JsonReader reader = new JsonReader(new InputStreamReader(inStream, StandardCharsets.UTF_8));
+        HttpResponse<String> response = createGetConnection(hubUrl, this.url, id);
+        String json = response.body();
         Gson gson = new Gson();
         Type type = new TypeToken<HashMap<Long, String>>(){}.getType();
-        HashMap<Long, String> map = gson.fromJson(reader, type);
-        inStream.close();
-        reader.close();
-        con.disconnect();
-        return map;
+        return gson.fromJson(json, type);
     }
 
     private Long getLeader() throws Exception {
-        HttpURLConnection con = createGetConnection(hubUrl + "/leader", this.url, id);
-        try (BufferedReader br = new BufferedReader(
-                new InputStreamReader(con.getInputStream(), StandardCharsets.UTF_8))) {
-            StringBuilder response = new StringBuilder();
-            String responseLine = null;
-            while ((responseLine = br.readLine()) != null) {
-                response.append(responseLine.trim());
-            }
-            if(response.toString().equals(null))
-            {
-                return null;
-            }
-            return Long.parseLong(response.toString());
-        }
+        HttpResponse<String> response = createGetConnection(hubUrl + "/leader", this.url, id);
+        return Long.parseLong(response.body());
     }
 
     @PutMapping("/bookstores/{storeID}/leader")
@@ -184,9 +165,9 @@ public class BookStoreController {
     }
 
     private EntityModel<BookStore> getAndParseBookStore(String address) throws Exception{
-        HttpURLConnection con = createConnection(address);
-        JsonObject jso = getJsonObject(con);
-
+        HttpResponse<String> response = createGetConnection(address, this.url, id);
+        JsonParser parser = new JsonParser();
+        JsonObject jso = parser.parse(response.body()).getAsJsonObject();
         BookStore store = new BookStore();
         store.setServerId((jso.get("serverId") != null ? jso.get("serverId").getAsLong() : null));
         store.setName(!jso.get("name").isJsonNull() ? jso.get("name").getAsString() : null);
@@ -212,13 +193,10 @@ public class BookStoreController {
             if(address == null) {
                 continue;
             }
-            HttpURLConnection con = createConnection(address);
-            JsonObject jso = null;
-            try{
-                jso = getJsonObject(con);
-            }catch(Exception e){
-                continue;
-            }
+            HttpResponse<String> response = createGetConnection(address, this.url, this.id);
+            if(response.statusCode() != 200) continue;
+            JsonParser parser = new JsonParser();
+            JsonObject jso = parser.parse(response.body()).getAsJsonObject();
             Gson gson = new Gson();
             Type collectionType = new TypeToken<List<Book>>(){}.getType();
             List<Book> books = gson.fromJson(jso.get("books"), collectionType);
@@ -247,13 +225,11 @@ public class BookStoreController {
             storeRepository.findById(storeID).orElseThrow(() -> new BookStoreNotFoundException(storeID));
             storeRepository.deleteById(storeID);
             this.map.remove(storeID);
-            HttpURLConnection con = createConnection(hubUrl + "/" + storeID, "DELETE");
-            con.getResponseCode();
+            createDeleteConnection(hubUrl + "/" + storeID);
             List<Book> books = bookRepository.findByStoreID(storeID);
             for (Book book : books) {
                 bookRepository.delete(book);
             }
-            con.disconnect();
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
         }catch (BookStoreNotFoundException e){
             if(this.map.containsKey(storeID)){
@@ -271,66 +247,17 @@ public class BookStoreController {
         this.map.remove(id);
     }
     @GetMapping("/bookstores/{storeID}/ping")
-    protected boolean ping()
-    {
+    protected boolean ping() {
         return true;
     }
 
     private EntityModel<BookStore> postToHub(BookStore bookStore) throws Exception {
-        HttpURLConnection con = createConnection(hubUrl, "POST");
-        DataOutputStream out = new DataOutputStream(con.getOutputStream());
-        Gson gson = new Gson();
         JsonObject jso = new JsonObject();
         jso.addProperty("address", this.url + "/bookstores/");
-        String str = gson.toJson(jso);
-        out.writeBytes(str);
-        int x = con.getResponseCode();
-        out.flush();
-        out.close();
-        try(BufferedReader br = new BufferedReader(
-                new InputStreamReader(con.getInputStream(), StandardCharsets.UTF_8))) {
-            StringBuilder response = new StringBuilder();
-            String responseLine = null;
-            while ((responseLine = br.readLine()) != null) {
-                response.append(responseLine.trim());
-            }
-            bookStore.setServerId(Long.parseLong(response.toString()));
-            this.id = bookStore.getServerId();
-        }
-        storeRepository.flush();
-        con.disconnect();
+        HttpResponse<String> response = createPostConnection(hubUrl, jso);
+        bookStore.setServerId(Long.parseLong(response.body()));
+        this.id = bookStore.getServerId();
         return bookStoreModelAssembler.toModel(storeRepository.save(bookStore));
-    }
-
-    // For GET requests
-    private HttpURLConnection createConnection(String address) throws Exception {
-        URL url = new URL(address);
-        HttpURLConnection con = (HttpURLConnection) url.openConnection();
-        con.setRequestMethod("GET");
-        con.setRequestProperty("accept", "application/json");
-        con.setDoOutput(true);
-        con.connect();
-        int x = con.getResponseCode();
-        return con;
-    }
-
-    // For POST, PUT, and DELETE requests
-    private HttpURLConnection createConnection(String address, String request) throws Exception {
-        URL url = new URL(address);
-        HttpURLConnection con = (HttpURLConnection) url.openConnection();
-        con.setRequestMethod(request);
-        con.setRequestProperty("Content-Type", "application/json");
-        con.setDoOutput(true);
-        con.connect();
-        return con;
-    }
-
-    private JsonObject getJsonObject(HttpURLConnection con) throws IOException {
-        InputStream inStream = con.getInputStream();
-        JsonObject jso = (JsonObject) new JsonParser().parse(new InputStreamReader(inStream, StandardCharsets.UTF_8));
-        inStream.close();
-        con.disconnect();
-        return jso;
     }
 
 }

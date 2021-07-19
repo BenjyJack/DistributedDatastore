@@ -34,13 +34,7 @@ public class HubController {
     public HubController(HubRepository repository) throws IOException {
         this.repository = repository;
         this.hub = new ServerHub();
-        if(!repository.findAll().isEmpty()) {
-            leader = findLeader();
-            sendLeader();
-        }
-        else {
-            leader = null;
-        }
+        leader = findLeader();
     }
 
     @PostConstruct
@@ -65,6 +59,7 @@ public class HubController {
                         .send(request, HttpResponse.BodyHandlers.ofString());
                 if(response.body().equals("true")){
                     leader = String.valueOf(id);
+                    sendLeader();
                     return leader;
                 }
             }
@@ -72,9 +67,6 @@ public class HubController {
             }
         }
         return null;
-    }
-    protected String basicGetLeader(){
-        return leader;
     }
 
     @PostMapping("/hub")
@@ -134,11 +126,9 @@ public class HubController {
             }
             if(!response.body().equals("true")){
                 findLeader();
-                if(leader != null) sendLeader();
             }
         }else{
             findLeader();
-            if(leader != null) sendLeader();
         }
     }
 
@@ -146,10 +136,6 @@ public class HubController {
     protected String getMap() {
         Gson gson = new Gson();
         return gson.toJson(this.hub.getMap());
-    }
-
-    protected HashMap<Long, String> getLocalMap(){
-        return this.hub.getMap();
     }
 
     @GetMapping("/hub/leader")
@@ -229,7 +215,6 @@ public class HubController {
         }
         if(serverID.equals(Long.parseLong(leader))){
             findLeader();
-            sendLeader();
         }
     }
 }

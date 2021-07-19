@@ -13,7 +13,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
@@ -66,10 +65,8 @@ public class BookController {
         if (!amILeader()) {
             String address = this.map.get(this.leader.getLeader());
             address = removeIDNum(address) + "book?id=" + String.join(",", id);
-            Gson gson = new Gson();
-            String json = gson.toJson(book.makeJson());
-            HttpResponse<String> response = getPostConnectionJava9(address, json);
-            if(response.statusCode() != 200) throw new Exception();
+            HttpResponse<String> response = createPostConnection(address, book.makeJson());
+            if(response.statusCode() != 200) throw new RuntimeException("Could not connect to " + address);
             JsonObject jso = new JsonParser().parse(response.body()).getAsJsonObject();
             JsonArray bookArray = jso.getAsJsonObject("_embedded").getAsJsonArray("bookList");
             for (JsonElement element: bookArray) {
@@ -77,15 +74,11 @@ public class BookController {
                 entityList.add(assembler.toModel(newBook));
             }
         }else{
-            for(String storeId: id)
-            {
+            for(String storeId: id) {
                 book.setStoreID(Long.parseLong(storeId));
                 if(!this.map.containsKey(Long.parseLong(storeId))) continue;
                 String address = this.map.get(Long.parseLong(storeId)) + "/books";
-                Gson gson = new Gson();
-                JsonObject jso = book.makeJson();
-                String json = gson.toJson(jso);
-                HttpResponse<String> response = getPostConnectionJava9(address, json);
+                HttpResponse<String> response = createPostConnection(address, book.makeJson());
                 if(response.statusCode() != 201){
                     continue;
                 }
@@ -107,9 +100,7 @@ public class BookController {
             }
             JsonObject jso = book.makeJson();
             jso.addProperty("storeID", book.getStoreID());
-            HttpURLConnection con = createConnection(this.map.get(book.getStoreID()) + "/books", "POST");
-            Gson gson = new Gson();
-            outputJson(con, gson, jso);
+            createPostConnection(this.map.get(book.getStoreID()) + "/books", jso);
             entityModelList.add(assembler.toModel(book));
         }
         return CollectionModel.of(entityModelList, linkTo(methodOn(BookController.class)).withSelfRel());
@@ -130,10 +121,8 @@ public class BookController {
         }
         JsonObject elementedArray = new JsonObject();
         elementedArray.add("books", jsonArray);
-        Gson gson = new Gson();
-        String str = gson.toJson(elementedArray);
-        HttpResponse<String> response = getPostConnectionJava9(address, str);
-        if(response.statusCode() != 200) throw new Exception();
+        HttpResponse<String> response = createPostConnection(address, elementedArray);
+        if(response.statusCode() != 200) throw new RuntimeException("Could not connect to " + address);
         JsonObject jso = new JsonParser().parse(response.body()).getAsJsonObject();
         JsonArray bookArray = jso.getAsJsonObject("_embedded").getAsJsonArray("bookList");
         ArrayList<EntityModel<Book>> entityModels = new ArrayList<>();
@@ -229,7 +218,7 @@ public class BookController {
             checkStore(storeID);
             checkBook(id, storeID);
             repository.deleteById(id);
-            return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+            return ResponseEntity.noContent().build();
         }catch(BookStoreNotFoundException e){
             if (this.map.containsKey(storeID)) {
                 return redirectWithId(id, storeID);
