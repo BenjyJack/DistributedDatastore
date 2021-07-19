@@ -18,6 +18,8 @@ import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
@@ -38,6 +40,7 @@ public class BookStoreController {
     private ServerMap map;
     private Long id = null;
     private Leader leader;
+    Logger logger = LoggerFactory.getLogger(BookStoreController.class);
 
     @Value("${application.baseUrl}")
     private String url;
@@ -68,7 +71,7 @@ public class BookStoreController {
         }
 
         this.leader.setLeader(getLeader());
-
+        logger.info("Server initialized B-)");
     }
 
     private void registerWithHub() throws Exception {
@@ -76,6 +79,7 @@ public class BookStoreController {
         json.addProperty("id", this.id);
         json.addProperty("address", this.url + "/bookstores/" + this.id);
         createPutConnection(hubUrl, json);
+        logger.info("Server connected to network");
     }
 
     private HashMap<Long, String> reclaimMap() throws Exception {
@@ -83,11 +87,13 @@ public class BookStoreController {
         String json = response.body();
         Gson gson = new Gson();
         Type type = new TypeToken<HashMap<Long, String>>(){}.getType();
+        logger.info("Map reclaimed");
         return gson.fromJson(json, type);
     }
 
     private Long getLeader() throws Exception {
         HttpResponse<String> response = createGetConnection(hubUrl + "/leader", this.url, id);
+        logger.info("Leader found. Mission Accomplished");
         return Long.parseLong(response.body());
     }
 
@@ -104,6 +110,7 @@ public class BookStoreController {
         }
         EntityModel<BookStore> entityModel = postToHub(bookStore);
         System.out.println(map.getMap().toString());
+        logger.info("Store posted. Use of server functions may now proceed. Side effects may include: who the heck knows");
         return ResponseEntity
                 .created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
                 .body(entityModel);
@@ -115,6 +122,7 @@ public class BookStoreController {
         Long givenID = jso.get("id").getAsLong();
         String address = jso.get("address").getAsString();
         this.map.put(givenID, address);
+        logger.info(givenID + " has joined the network");
     }
 
     @GetMapping("/bookstores/{storeID}")
@@ -143,8 +151,7 @@ public class BookStoreController {
             for (Long storeId : this.map.keySet()) {
                 try{
                     entModelList.add(getAndParseBookStore(this.map.get(storeId)));
-                }catch(Exception e){
-                    continue;
+                }catch(Exception ignored){
                 }
             }
         }else{
@@ -156,8 +163,7 @@ public class BookStoreController {
                 }
                 try{
                     entModelList.add(getAndParseBookStore(address));
-                }catch(Exception e){
-                    continue;
+                }catch(Exception ignored){
                 }
             }
         }
@@ -214,6 +220,7 @@ public class BookStoreController {
                     if(newBookStore.getName() != null) bookStore.setName(newBookStore.getName());
                     if(newBookStore.getPhone() != null) bookStore.setPhone(newBookStore.getPhone());
                     if(newBookStore.getStreetAddress() != null) bookStore.setStreetAddress(newBookStore.getStreetAddress());
+                    logger.info("Bookstore {} succesfully updated", storeID);
                     return storeRepository.save(bookStore);
                 })
                 .orElseThrow(() -> new BookStoreNotFoundException(storeID));
@@ -230,9 +237,11 @@ public class BookStoreController {
             for (Book book : books) {
                 bookRepository.delete(book);
             }
+            logger.info(storeID + " has been permanently deleted");
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
         }catch (BookStoreNotFoundException e){
             if(this.map.containsKey(storeID)){
+                logger.info("Corporate sabotage is Assur, except in a Karpeif against Ben & Jerry's");
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }else{
                 throw e;
@@ -245,6 +254,7 @@ public class BookStoreController {
         JsonObject jso = new JsonParser().parse(json).getAsJsonObject();
         Long id = jso.get("id").getAsLong();
         this.map.remove(id);
+        logger.info(id + " don't exist no more");
     }
     @GetMapping("/bookstores/{storeID}/ping")
     protected boolean ping() {
@@ -259,5 +269,4 @@ public class BookStoreController {
         this.id = bookStore.getServerId();
         return bookStoreModelAssembler.toModel(storeRepository.save(bookStore));
     }
-
 }

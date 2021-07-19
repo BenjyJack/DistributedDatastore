@@ -5,6 +5,8 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 import com.google.gson.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.IanaLinkRelations;
@@ -27,6 +29,7 @@ public class BookController {
     private final BookStoreRepository storeRepository;
     private ServerMap map;
     private Leader leader;
+    Logger logger = LoggerFactory.getLogger(BookController.class);
 
     public BookController(BookRepository repository, BookModelAssembler assembler, BookStoreRepository storeRepository, ServerMap map, Leader leader) {
         this.repository = repository;
@@ -43,6 +46,7 @@ public class BookController {
             book.setStoreID(storeID);
             book.setStore(store);
             EntityModel<Book> entityModel = assembler.toModel(repository.save(book));
+            logger.info("Book has been added");
             return ResponseEntity
                 .created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
                 .body(entityModel);
@@ -73,6 +77,7 @@ public class BookController {
                 Book newBook = new Book(element.getAsJsonObject());
                 entityList.add(assembler.toModel(newBook));
             }
+            logger.info("Batch request successfully executed by " + leader.getLeader());
         }else{
             for(String storeId: id) {
                 book.setStoreID(Long.parseLong(storeId));
@@ -86,6 +91,7 @@ public class BookController {
                 JsonObject jo = parser.parse(response.body()).getAsJsonObject();
                 entityList.add(assembler.toModel(new Book(jo)));
             }
+            logger.info("Batch request successfully handled");
         }
         return CollectionModel.of(entityList, linkTo(methodOn(BookController.class).oneBookToManyStores(null, null)).withSelfRel());
     }
@@ -105,6 +111,7 @@ public class BookController {
             createPostConnection(this.map.get(book.getStoreID()) + "/books", jso);
             entityModelList.add(assembler.toModel(book));
         }
+        logger.info("Batch of multiple to multiple completed");
         return CollectionModel.of(entityModelList, linkTo(methodOn(BookController.class)).withSelfRel());
     }
 
@@ -132,6 +139,7 @@ public class BookController {
             Book book = new Book(element.getAsJsonObject());
             entityModels.add(assembler.toModel(book));
         }
+        logger.info("Batch of multiple to multiple completed by " + leader.getLeader());
         return  CollectionModel.of(entityModels, linkTo(methodOn(BookController.class)).withSelfRel());
     }
 
@@ -200,6 +208,7 @@ public class BookController {
                     if(newBook.getDescription() != null) book.setDescription(newBook.getDescription());
                     if(newBook.getLanguage() != null) book.setLanguage(newBook.getLanguage());
                     if(newBook.getTitle() != null) book.setTitle(newBook.getTitle());
+                    logger.info("Book updated");
                     return repository.save(book);
                 })
                 .orElseThrow(() -> new BookNotFoundException(id));
@@ -220,6 +229,7 @@ public class BookController {
             checkStore(storeID);
             checkBook(id, storeID);
             repository.deleteById(id);
+            logger.info("Book permanently terminated");
             return ResponseEntity.noContent().build();
         }catch(BookStoreNotFoundException e){
             if (this.map.containsKey(storeID)) {
