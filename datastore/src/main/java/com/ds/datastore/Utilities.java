@@ -14,7 +14,8 @@ public class Utilities {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(new URI(address))
                 .headers("Content-Type", "application/json;charset=UTF-8")
-                .setHeader(serverAddress, String.valueOf(id))
+                .setHeader("referer", serverAddress)
+                .setHeader("id", String.valueOf(id))
                 .GET()
                 .build();
         return HttpClient.newBuilder()
