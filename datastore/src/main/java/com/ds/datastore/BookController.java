@@ -82,7 +82,9 @@ public class BookController {
                 if(response.statusCode() != 201){
                     continue;
                 }
-                entityList.add(assembler.toModel(new Book(book)));
+                JsonParser parser = new JsonParser();
+                JsonObject jo = parser.parse(response.body()).getAsJsonObject();
+                entityList.add(assembler.toModel(new Book(jo)));
             }
         }
         return CollectionModel.of(entityList, linkTo(methodOn(BookController.class).oneBookToManyStores(null, null)).withSelfRel());

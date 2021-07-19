@@ -19,7 +19,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.List;
 
 
@@ -34,7 +33,7 @@ public class HubController {
     public HubController(HubRepository repository) throws IOException {
         this.repository = repository;
         this.hub = new ServerHub();
-        leader = findLeader();
+        leader = findAndSendLeader();
     }
 
     @PostConstruct
@@ -45,7 +44,7 @@ public class HubController {
         }
     }
 
-    protected String findLeader() throws IOException {
+    protected String findAndSendLeader() throws IOException {
         leader = null;
         for(Long id: hub.getMap().keySet()) {
             try {
@@ -90,7 +89,7 @@ public class HubController {
         return serverId;
     }
 
-    protected void sendLeader() throws IOException {
+    private void sendLeader() throws IOException {
         for(String address : hub.getMap().values())
         {
             URL url = new URL(address + "/leader");
@@ -122,13 +121,13 @@ public class HubController {
                         .build()
                         .send(request, HttpResponse.BodyHandlers.ofString());
             }catch(Exception e){
-                findLeader();
+                findAndSendLeader();
             }
             if(!response.body().equals("true")){
-                findLeader();
+                findAndSendLeader();
             }
         }else{
-            findLeader();
+            findAndSendLeader();
         }
     }
 
@@ -202,7 +201,7 @@ public class HubController {
                     .send(request, HttpResponse.BodyHandlers.ofString());
         }
         if(serverID.equals(Long.parseLong(leader))){
-            findLeader();
+            findAndSendLeader();
         }
     }
 }
