@@ -46,7 +46,7 @@ public class BookController {
             book.setStoreID(storeID);
             book.setStore(store);
             EntityModel<Book> entityModel = assembler.toModel(repository.save(book));
-            logger.info("Book has been added");
+            logger.info("Book {} by {} has been added", book.getTitle(), book.getAuthor());
             return ResponseEntity
                 .created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
                 .body(entityModel);
@@ -70,14 +70,17 @@ public class BookController {
             String address = this.map.get(this.leader.getLeader());
             address = removeIDNum(address) + "book?id=" + String.join(",", id);
             HttpResponse<String> response = createPostConnection(address, book.makeJson());
-            if(response.statusCode() != 200) throw new RuntimeException("Could not connect to " + address);
+            if(response.statusCode() != 200){
+                logger.warn("Server {} was not reached", leader.getLeader());
+                throw new RuntimeException("Could not connect to " + address);
+            }
             JsonObject jso = new JsonParser().parse(response.body()).getAsJsonObject();
             JsonArray bookArray = jso.getAsJsonObject("_embedded").getAsJsonArray("bookList");
             for (JsonElement element: bookArray) {
                 Book newBook = new Book(element.getAsJsonObject());
                 entityList.add(assembler.toModel(newBook));
             }
-            logger.info("Batch request successfully executed by " + leader.getLeader());
+            logger.info("Batch request successfully executed by {}", leader.getLeader());
         }else{
             for(String storeId: id) {
                 book.setStoreID(Long.parseLong(storeId));

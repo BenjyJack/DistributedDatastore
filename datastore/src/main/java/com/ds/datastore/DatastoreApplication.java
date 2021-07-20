@@ -8,8 +8,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class DatastoreApplication {
 
-	private static final Logger LOGGER= LoggerFactory.getLogger(DatastoreApplication.class);
-
 	public static void main(String[] args) {
 		SpringApplication.run(DatastoreApplication.class, args);
 	}

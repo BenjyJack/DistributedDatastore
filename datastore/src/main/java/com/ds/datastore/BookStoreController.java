@@ -79,7 +79,7 @@ public class BookStoreController {
         json.addProperty("id", this.id);
         json.addProperty("address", this.url + "/bookstores/" + this.id);
         createPutConnection(hubUrl, json);
-        logger.info("Server connected to network");
+        logger.info("Server {} connected to network at {}", this.id, this.url);
     }
 
     private HashMap<Long, String> reclaimMap() throws Exception {
@@ -148,10 +148,11 @@ public class BookStoreController {
     protected CollectionModel<EntityModel<BookStore>> getBookStores(@RequestParam(required = false) List<String> id) throws Exception {
         List<EntityModel<BookStore>> entModelList = new ArrayList<>();
         if(id == null) {
-            for (Long storeId : this.map.keySet()) {
+            for (Long storeID : this.map.keySet()) {
                 try{
-                    entModelList.add(getAndParseBookStore(this.map.get(storeId)));
+                    entModelList.add(getAndParseBookStore(this.map.get(storeID)));
                 }catch(Exception ignored){
+                    logger.warn("Server {} was not reached", storeID);
                 }
             }
         }else{
@@ -164,6 +165,7 @@ public class BookStoreController {
                 try{
                     entModelList.add(getAndParseBookStore(address));
                 }catch(Exception ignored){
+                    logger.warn("Server {} was not reached", storeID);
                 }
             }
         }
@@ -197,10 +199,14 @@ public class BookStoreController {
             Long parsedId = Long.parseLong(storeID);
             String address = this.map.get(parsedId);
             if(address == null) {
+                logger.warn("Server {} was attempted but does not exist", parsedId);
                 continue;
             }
             HttpResponse<String> response = createGetConnection(address, this.url, this.id);
-            if(response.statusCode() != 200) continue;
+            if(response.statusCode() != 200) {
+                logger.warn("Server {} was not reached", parsedId);
+                continue;
+            }
             JsonParser parser = new JsonParser();
             JsonObject jso = parser.parse(response.body()).getAsJsonObject();
             Gson gson = new Gson();
@@ -220,7 +226,7 @@ public class BookStoreController {
                     if(newBookStore.getName() != null) bookStore.setName(newBookStore.getName());
                     if(newBookStore.getPhone() != null) bookStore.setPhone(newBookStore.getPhone());
                     if(newBookStore.getStreetAddress() != null) bookStore.setStreetAddress(newBookStore.getStreetAddress());
-                    logger.info("Bookstore {} succesfully updated", storeID);
+                    logger.info("Bookstore {} successfully updated", storeID);
                     return storeRepository.save(bookStore);
                 })
                 .orElseThrow(() -> new BookStoreNotFoundException(storeID));
