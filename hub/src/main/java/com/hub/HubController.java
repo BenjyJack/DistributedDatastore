@@ -1,5 +1,7 @@
 package com.hub;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.*;
@@ -29,11 +31,13 @@ public class HubController {
     private final ServerHub hub;
     private final HubRepository repository;
     private String leader;
+    Logger logger = LoggerFactory.getLogger(HubController.class);
 
     public HubController(HubRepository repository) throws IOException {
         this.repository = repository;
         this.hub = new ServerHub();
         leader = findAndSendLeader();
+        logger.info("Hub initialized");
     }
 
     @PostConstruct
@@ -59,6 +63,7 @@ public class HubController {
                 if(response.body().equals("true")){
                     leader = String.valueOf(id);
                     sendLeader();
+                    logger.info(leader + " is now the leader");
                     return leader;
                 }
             }
@@ -86,6 +91,7 @@ public class HubController {
             leader = String.valueOf(serverId);
         }
         sendLeader();
+        logger.info(address + " has been added to the network");
         return serverId;
     }
 
@@ -184,6 +190,7 @@ public class HubController {
         entry.setServerAddress(address);
         repository.save(entry);
         addNewServerToAllServers(json);
+        logger.info(id + "'s address has changed to " + address);
     }
 
     @DeleteMapping("/hub/{serverID}")
@@ -203,5 +210,6 @@ public class HubController {
         if(serverID.equals(Long.parseLong(leader))){
             findAndSendLeader();
         }
+        logger.info(serverID + " has been removed from the network");
     }
 }
