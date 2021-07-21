@@ -1,5 +1,6 @@
 package com.hub;
 
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -73,6 +74,7 @@ public class HubController {
         return null;
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @PostMapping("/hub")
     protected Long addServer(@RequestBody String json) throws Exception {
         String address = parseAddressFromJsonString(json);
@@ -137,12 +139,14 @@ public class HubController {
         }
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @GetMapping("/hub")
     protected String getMap() {
         Gson gson = new Gson();
         return gson.toJson(this.hub.getMap());
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @GetMapping("/hub/leader")
     protected String getLeader(@RequestHeader(name = "referer") String address, @RequestHeader(name = "id") String id) throws IOException {
         if(leader == null && !id.equals("null")){
@@ -179,6 +183,7 @@ public class HubController {
         }
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @PutMapping("/hub")
     protected void updateAddress(@RequestBody String json) throws Exception {
         JsonParser parser = new JsonParser();
@@ -193,6 +198,7 @@ public class HubController {
         logger.info(id + "'s address has changed to " + address);
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @DeleteMapping("/hub/{serverID}")
     protected void removeServerFromNetwork(@PathVariable Long serverID) throws Exception{
         if(!this.hub.removeServer(serverID)) return;

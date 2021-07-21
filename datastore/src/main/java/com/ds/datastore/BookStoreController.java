@@ -16,8 +16,8 @@ import javax.annotation.PostConstruct;
 
 import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
-import com.google.gson.stream.JsonReader;
 
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -59,7 +59,14 @@ public class BookStoreController {
 
     @PostConstruct
     private void restartChangedOrNew() throws Exception {
-        this.map.setMap(reclaimMap());
+        for(;;) {
+            try {
+                this.map.setMap(reclaimMap());
+                break;
+            } catch (Exception e) {
+                System.out.println(e.getClass());
+            }
+        }
         List<BookStore> bookStoreList = storeRepository.findAll();
         if(!bookStoreList.isEmpty()) {
             BookStore bookStore = bookStoreList.get(0);
@@ -97,12 +104,14 @@ public class BookStoreController {
         return Long.parseLong(response.body());
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @PutMapping("/bookstores/{storeID}/leader")
     protected void setLeader(@RequestBody Long leader)
     {
         this.leader.setLeader(leader);
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @PostMapping("/bookstores")
     protected ResponseEntity<EntityModel<BookStore>> newBookStore(@RequestBody BookStore bookStore) throws Exception {
         if (this.id != null) {
@@ -116,6 +125,7 @@ public class BookStoreController {
                 .body(entityModel);
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @PostMapping("/bookstores/{id}")
     protected void addServer(@RequestBody String json, @PathVariable String id) {
         JsonObject jso = new JsonParser().parse(json).getAsJsonObject();
@@ -125,6 +135,7 @@ public class BookStoreController {
         logger.info(givenID + " has joined the network");
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @GetMapping("/bookstores/{storeID}")
     protected ResponseEntity<EntityModel<BookStore>> one(@PathVariable Long storeID) throws Exception {
         try{
@@ -144,6 +155,7 @@ public class BookStoreController {
         }
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @GetMapping("/bookstores")
     protected CollectionModel<EntityModel<BookStore>> getBookStores(@RequestParam(required = false) List<String> id) throws Exception {
         List<EntityModel<BookStore>> entModelList = new ArrayList<>();
@@ -185,6 +197,7 @@ public class BookStoreController {
         return bookStoreModelAssembler.toModel(store);
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @GetMapping("/bookstores/books")
     protected CollectionModel<EntityModel<Book>> getAllBooksFromBookStores(@RequestParam (required = false) List<String> id) throws Exception {
         if(id == null) {
@@ -219,6 +232,7 @@ public class BookStoreController {
         return CollectionModel.of(entModelList, linkTo(methodOn(BookStoreController.class).getAllBooksFromBookStores(null)).withSelfRel());
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @PutMapping("/bookstores/{storeID}")
     protected BookStore updateBookStore(@RequestBody BookStore newBookStore, @PathVariable Long storeID) {
         return storeRepository.findById(storeID)
@@ -232,6 +246,7 @@ public class BookStoreController {
                 .orElseThrow(() -> new BookStoreNotFoundException(storeID));
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @DeleteMapping("/bookstores/{storeID}")
     protected ResponseEntity<EntityModel<BookStore>> deleteBookStore(@PathVariable Long storeID) throws Exception{
         try{
@@ -255,6 +270,7 @@ public class BookStoreController {
         }
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @DeleteMapping("/bookstores/map")
     protected void deleteFromMap(@RequestBody String json){
         JsonObject jso = new JsonParser().parse(json).getAsJsonObject();
@@ -263,6 +279,7 @@ public class BookStoreController {
         logger.info(id + " don't exist no more");
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @GetMapping("/bookstores/{storeID}/ping")
     protected boolean ping() {
         return true;

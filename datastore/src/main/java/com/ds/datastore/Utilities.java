@@ -7,6 +7,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 
 public class Utilities {
 
@@ -16,6 +17,7 @@ public class Utilities {
                 .headers("Content-Type", "application/json;charset=UTF-8")
                 .setHeader("referer", serverAddress)
                 .setHeader("id", String.valueOf(id))
+                .timeout(Duration.ofSeconds(4))
                 .GET()
                 .build();
         return HttpClient.newBuilder()

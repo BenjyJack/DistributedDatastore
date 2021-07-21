@@ -5,6 +5,7 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 import com.google.gson.*;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.github.resilience4j.retry.annotation.Retry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +41,7 @@ public class BookController {
         this.leader = leader;
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @PostMapping("/bookstores/{storeID}/books")
     protected ResponseEntity<EntityModel<Book>> newBook(@RequestBody Book book, @PathVariable Long storeID) throws Exception{
         try{
@@ -64,7 +66,8 @@ public class BookController {
         return this.storeRepository.findAll().get(0).getServerId().equals(this.leader.getLeader());
     }
 
-    @Retry(name = "postConnect")
+    @RateLimiter(name = "DDoS-stopper")
+    @Retry(name = "retry")
     @PostMapping("/bookstores/book")
     protected CollectionModel<EntityModel<Book>> oneBookToManyStores(@RequestBody Book book, @RequestParam List<String> id) throws Exception {
         List<EntityModel<Book>> entityList = new ArrayList<>();
@@ -101,6 +104,8 @@ public class BookController {
         return CollectionModel.of(entityList, linkTo(methodOn(BookController.class).oneBookToManyStores(null, null)).withSelfRel());
     }
 
+    @RateLimiter(name = "DDoS-stopper")
+    @Retry(name = "retry")
     @PostMapping("/bookstores/books")
     protected CollectionModel<EntityModel<Book>> multipleToMultiple(@RequestBody BookArray json) throws Exception {
         if(!amILeader()){
@@ -148,6 +153,7 @@ public class BookController {
         return  CollectionModel.of(entityModels, linkTo(methodOn(BookController.class)).withSelfRel());
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @GetMapping("/bookstores/{storeID}/books/{bookId}")
     protected ResponseEntity<EntityModel<Book>> one(@PathVariable Long bookId, @PathVariable Long storeID) throws Exception{
         try{
@@ -165,6 +171,7 @@ public class BookController {
         }
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @GetMapping("/bookstores/{storeID}/books")
     protected ResponseEntity<CollectionModel<EntityModel<Book>>> all(@PathVariable Long storeID, @RequestParam(required = false) List<String> id) throws Exception{
         List<EntityModel<Book>> booksAll = null;
@@ -201,6 +208,7 @@ public class BookController {
         return ResponseEntity.ok(CollectionModel.of(entModelList, linkTo(methodOn(BookController.class).all(storeID, null)).withSelfRel()));
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @PutMapping("/bookstores/{storeID}/books/{id}")
     protected ResponseEntity<EntityModel<Book>> updateBook(@RequestBody Book newBook, @PathVariable Long id, @PathVariable Long storeID) throws Exception{
         try{
@@ -228,6 +236,7 @@ public class BookController {
         }
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @DeleteMapping("/bookstores/{storeID}/books/{id}")
     protected ResponseEntity<EntityModel<Book>> deleteBook(@PathVariable Long id, @PathVariable Long storeID) throws Exception{
         try{
