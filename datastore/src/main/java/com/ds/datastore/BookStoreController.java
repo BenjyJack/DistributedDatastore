@@ -262,6 +262,7 @@ public class BookStoreController {
         this.map.remove(id);
         logger.info(id + " don't exist no more");
     }
+
     @GetMapping("/bookstores/{storeID}/ping")
     protected boolean ping() {
         return true;

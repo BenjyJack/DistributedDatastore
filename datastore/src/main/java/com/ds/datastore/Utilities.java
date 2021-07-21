@@ -2,6 +2,7 @@ package com.ds.datastore;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import io.github.resilience4j.retry.annotation.Retry;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -31,9 +32,14 @@ public class Utilities {
                 .headers("Content-Type", "application/json;charset=UTF-8")
                 .POST(HttpRequest.BodyPublishers.ofString(json))
                 .build();
-        return HttpClient.newBuilder()
+        HttpResponse<String> response = HttpClient.newBuilder()
                 .build()
                 .send(request, HttpResponse.BodyHandlers.ofString());
+        if(response.statusCode() != 201) {
+            System.out.println(response.statusCode());
+            throw new RuntimeException();
+        }
+        return response;
     }
 
     public static HttpResponse<String> createPutConnection(String address, JsonObject jso) throws Exception {
