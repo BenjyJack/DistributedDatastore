@@ -97,20 +97,16 @@ public class HubController {
         return serverId;
     }
 
-    private void sendLeader() throws IOException {
+    private void sendLeader() throws Exception {
         for(String address : hub.getMap().values())
         {
-            URL url = new URL(address + "/leader");
-            HttpURLConnection con = (HttpURLConnection) url.openConnection();
-            con.setRequestMethod("PUT");
-            con.setRequestProperty("Content-Type", "application/json");
-            con.setDoOutput(true);
-            try(OutputStream os = con.getOutputStream()) {
-                byte[] input = leader.getBytes(StandardCharsets.UTF_8);
-                os.write(input, 0, input.length);
-            }
-            int y = con.getResponseCode();
-            con.disconnect();
+            HttpRequest request = HttpRequest.newBuilder()
+                        .uri(new URI(address + "/leader"))
+                        .PUT(HttpRequest.BodyPublishers.ofString(leader))
+                        .build();
+            HttpResponse<String> response = HttpClient.newBuilder()
+                        .build()
+                        .send(request, HttpResponse.BodyHandlers.ofString());
         }
     }
 
