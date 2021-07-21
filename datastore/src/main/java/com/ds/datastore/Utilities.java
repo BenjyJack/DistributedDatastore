@@ -2,7 +2,6 @@ package com.ds.datastore;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-import io.github.resilience4j.retry.annotation.Retry;
 
 import java.net.URI;
 import java.net.http.HttpClient;
