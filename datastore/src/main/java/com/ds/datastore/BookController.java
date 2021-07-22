@@ -5,6 +5,7 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 import com.google.gson.*;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.github.resilience4j.retry.annotation.Retry;
 import org.slf4j.Logger;
@@ -21,6 +22,7 @@ import java.net.URI;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
@@ -32,13 +34,15 @@ public class BookController {
     private ServerMap map;
     private Leader leader;
     Logger logger = LoggerFactory.getLogger(BookController.class);
+    private Utilities utilities;
 
-    public BookController(BookRepository repository, BookModelAssembler assembler, BookStoreRepository storeRepository, ServerMap map, Leader leader) {
+    public BookController(BookRepository repository, BookModelAssembler assembler, BookStoreRepository storeRepository, ServerMap map, Leader leader, Utilities utilities) {
         this.repository = repository;
         this.assembler = assembler;
         this.storeRepository = storeRepository;
         this.map = map;
         this.leader = leader;
+        this.utilities = utilities;
     }
 
     @RateLimiter(name = "DDoS-stopper")
@@ -75,7 +79,7 @@ public class BookController {
         if (!amILeader()) {
             String address = this.map.get(this.leader.getLeader());
             address = removeIDNum(address) + "book?id=" + String.join(",", id);
-            HttpResponse<String> response = createConnection(address, book.makeJson(), null, null, "POST");
+            HttpResponse<String> response = (utilities.createConnection(address, book.makeJson(), null, null, "POST"));
             if(response.statusCode() != 200){
                 logger.warn("Server {} was not reached", leader.getLeader());
                 throw new RuntimeException("Could not connect to " + address);
@@ -92,10 +96,12 @@ public class BookController {
                 book.setStoreID(Long.parseLong(storeId));
                 if(!this.map.containsKey(Long.parseLong(storeId))) continue;
                 String address = this.map.get(Long.parseLong(storeId)) + "/books";
-                HttpResponse<String> response = createConnection(address, book.makeJson(), null, null, "POST");
-                if(response.statusCode() != 201){
+
+                Optional<HttpResponse<String>> optional = utilities.createConnectionCircuitBreaker(address, book.makeJson(), null, null, "POST");
+                if(optional.isEmpty()){
                     continue;
                 }
+                HttpResponse<String> response = optional.get();
                 JsonParser parser = new JsonParser();
                 JsonObject jo = parser.parse(response.body()).getAsJsonObject();
                 entityList.add(assembler.toModel(new Book(jo)));
@@ -107,7 +113,6 @@ public class BookController {
 
     //Retry only worked when placed here, on the more global method but did not work on the Utilities method
     @RateLimiter(name = "DDoS-stopper")
-    @Retry(name = "retry")
     @PostMapping("/bookstores/books")
     protected CollectionModel<EntityModel<Book>> multipleToMultiple(@RequestBody BookArray json) throws Exception {
         if(!amILeader()){
@@ -120,8 +125,10 @@ public class BookController {
             }
             JsonObject jso = book.makeJson();
             jso.addProperty("storeID", book.getStoreID());
-            createConnection(this.map.get(book.getStoreID()) + "/books", jso, null, null, "POST");
-            entityModelList.add(assembler.toModel(book));
+            Optional<HttpResponse<String>> optional = utilities.createConnectionCircuitBreaker(this.map.get(book.getStoreID()) + "/books", jso, null, null, "POST");
+            if(!optional.isEmpty()) {
+                entityModelList.add(assembler.toModel(book));
+            }
         }
         logger.info("Batch of multiple to multiple completed");
         return CollectionModel.of(entityModelList, linkTo(methodOn(BookController.class)).withSelfRel());
@@ -142,7 +149,7 @@ public class BookController {
         }
         JsonObject elementedArray = new JsonObject();
         elementedArray.add("books", jsonArray);
-        HttpResponse<String> response = createConnection(address, elementedArray, null, null, "POST");
+        HttpResponse<String> response = utilities.createConnection(address, elementedArray, null, null, "POST");
         if(response.statusCode() != 200) throw new RuntimeException("Could not connect to " + address);
         JsonObject jso = new JsonParser().parse(response.body()).getAsJsonObject();
         JsonArray bookArray = jso.getAsJsonObject("_embedded").getAsJsonArray("bookList");

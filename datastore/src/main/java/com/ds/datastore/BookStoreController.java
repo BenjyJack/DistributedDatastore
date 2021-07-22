@@ -16,7 +16,9 @@ import javax.annotation.PostConstruct;
 import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
+import io.github.resilience4j.retry.annotation.Retry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -39,7 +41,8 @@ public class BookStoreController {
     private ServerMap map;
     private Long id = null;
     private Leader leader;
-    Logger logger = LoggerFactory.getLogger(BookStoreController.class);
+    private Logger logger = LoggerFactory.getLogger(BookStoreController.class);
+    private Utilities utilities;
 
     @Value("${application.baseUrl}")
     private String url;
@@ -47,26 +50,26 @@ public class BookStoreController {
     @Value("${hub.url}")
     private String hubUrl;
 
-    public BookStoreController(BookStoreModelAssembler bookStoreModelAssembler, BookModelAssembler bookModelAssembler, BookRepository bookRepository, BookStoreRepository storeRepository, ServerMap map, Leader leader) {
+    public BookStoreController(BookStoreModelAssembler bookStoreModelAssembler, BookModelAssembler bookModelAssembler, BookRepository bookRepository, BookStoreRepository storeRepository, ServerMap map, Leader leader, Utilities utilities) {
         this.bookStoreModelAssembler = bookStoreModelAssembler;
         this.bookModelAssembler = bookModelAssembler;
         this.bookRepository = bookRepository;
         this.storeRepository = storeRepository;
         this.map = map;
         this.leader = leader;
+        this.utilities = utilities;
     }
 
     //Tried putting a retry and cicuit breaker here. Did not work
     @PostConstruct
-    private void restartChangedOrNew() throws Exception {
-        for(;;) {
-            try {
+    public void restartChangedOrNew() throws Exception {
+        try {
                 this.map.setMap(reclaimMap());
-                break;
-            } catch (Exception e) {
+
+        }catch (Exception e) {
                 System.out.println(e.getClass());
             }
-        }
+
         List<BookStore> bookStoreList = storeRepository.findAll();
         if(!bookStoreList.isEmpty()) {
             BookStore bookStore = bookStoreList.get(0);
@@ -85,12 +88,14 @@ public class BookStoreController {
         JsonObject json = new JsonObject();
         json.addProperty("id", this.id);
         json.addProperty("address", this.url + "/bookstores/" + this.id);
-        createConnection(hubUrl, json, this.url, this.id, "PUT");
+        utilities.createConnection(hubUrl, json, this.url, this.id, "PUT");
         logger.info("Server {} connected to network at {}", this.id, this.url);
     }
 
-    private HashMap<Long, String> reclaimMap() throws Exception {
-        HttpResponse<String> response = createConnection(hubUrl, null, this.url, id, "GET");
+
+
+    public HashMap<Long, String> reclaimMap() throws Exception {
+        HttpResponse<String> response = utilities.createConnection(hubUrl, null, this.url, id, "GET");
         String json = response.body();
         Gson gson = new Gson();
         Type type = new TypeToken<HashMap<Long, String>>(){}.getType();
@@ -99,7 +104,7 @@ public class BookStoreController {
     }
 
     private Long getLeader() throws Exception {
-        HttpResponse<String> response = createConnection(hubUrl + "/leader", null, this.url, id, "GET");
+        HttpResponse<String> response = utilities.createConnection(hubUrl + "/leader", null, this.url, id, "GET");
         logger.info("Leader found. Mission Accomplished");
         return Long.parseLong(response.body());
     }
@@ -185,7 +190,7 @@ public class BookStoreController {
     }
 
     private EntityModel<BookStore> getAndParseBookStore(String address) throws Exception{
-        HttpResponse<String> response = createConnection(address, null, this.url, id, "GET");
+        HttpResponse<String> response = utilities.createConnection(address, null, this.url, id, "GET");
         JsonParser parser = new JsonParser();
         JsonObject jso = parser.parse(response.body()).getAsJsonObject();
         BookStore store = new BookStore();
@@ -215,7 +220,7 @@ public class BookStoreController {
                 logger.warn("Server {} was attempted but does not exist", parsedId);
                 continue;
             }
-            HttpResponse<String> response = createConnection(address, null, this.url, this.id, "GET");
+            HttpResponse<String> response = utilities.createConnection(address, null, this.url, this.id, "GET");
             if(response.statusCode() != 200) {
                 logger.warn("Server {} was not reached", parsedId);
                 continue;
@@ -253,7 +258,7 @@ public class BookStoreController {
             storeRepository.findById(storeID).orElseThrow(() -> new BookStoreNotFoundException(storeID));
             storeRepository.deleteById(storeID);
             this.map.remove(storeID);
-            createConnection(hubUrl + "/" + storeID, null, this.url, this.id, "DELETE");
+            utilities.createConnection(hubUrl + "/" + storeID, null, this.url, this.id, "DELETE");
             List<Book> books = bookRepository.findByStoreID(storeID);
             for (Book book : books) {
                 bookRepository.delete(book);
@@ -288,7 +293,7 @@ public class BookStoreController {
     private EntityModel<BookStore> postToHub(BookStore bookStore) throws Exception {
         JsonObject jso = new JsonObject();
         jso.addProperty("address", this.url + "/bookstores/");
-        HttpResponse<String> response = createConnection(hubUrl, jso, this.url, this.id, "POST");
+        HttpResponse<String> response = utilities.createConnection(hubUrl, jso, this.url, this.id, "POST");
         bookStore.setServerId(Long.parseLong(response.body()));
         this.id = bookStore.getServerId();
         return bookStoreModelAssembler.toModel(storeRepository.save(bookStore));
