@@ -12,6 +12,8 @@ import java.time.Duration;
 
 public class Utilities {
 
+//Tried putting a Retry here. After running once, it would return to the method that called it and would not retry
+// Therefore, we put the Retry on the more global method and that worked
     public static HttpResponse<String> createConnection(String address, JsonObject jso, String serverAddress, Long id, String requestType) throws Exception{
         Gson gson = new Gson();
         String json = gson.toJson(jso);

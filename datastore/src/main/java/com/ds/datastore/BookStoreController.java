@@ -56,6 +56,7 @@ public class BookStoreController {
         this.leader = leader;
     }
 
+    //Tried putting a retry and cicuit breaker here. Did not work
     @PostConstruct
     private void restartChangedOrNew() throws Exception {
         for(;;) {
