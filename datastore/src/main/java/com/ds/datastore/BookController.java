@@ -74,7 +74,7 @@ public class BookController {
         if (!amILeader()) {
             String address = this.map.get(this.leader.getLeader());
             address = removeIDNum(address) + "book?id=" + String.join(",", id);
-            HttpResponse<String> response = createPostConnection(address, book.makeJson());
+            HttpResponse<String> response = createConnection(address, book.makeJson(), null, null, "POST");
             if(response.statusCode() != 200){
                 logger.warn("Server {} was not reached", leader.getLeader());
                 throw new RuntimeException("Could not connect to " + address);
@@ -91,7 +91,7 @@ public class BookController {
                 book.setStoreID(Long.parseLong(storeId));
                 if(!this.map.containsKey(Long.parseLong(storeId))) continue;
                 String address = this.map.get(Long.parseLong(storeId)) + "/books";
-                HttpResponse<String> response = createPostConnection(address, book.makeJson());
+                HttpResponse<String> response = createConnection(address, book.makeJson(), null, null, "POST");
                 if(response.statusCode() != 201){
                     continue;
                 }
@@ -118,7 +118,7 @@ public class BookController {
             }
             JsonObject jso = book.makeJson();
             jso.addProperty("storeID", book.getStoreID());
-            createPostConnection(this.map.get(book.getStoreID()) + "/books", jso);
+            createConnection(this.map.get(book.getStoreID()) + "/books", jso, null, null, "POST");
             entityModelList.add(assembler.toModel(book));
         }
         logger.info("Batch of multiple to multiple completed");
@@ -140,7 +140,7 @@ public class BookController {
         }
         JsonObject elementedArray = new JsonObject();
         elementedArray.add("books", jsonArray);
-        HttpResponse<String> response = createPostConnection(address, elementedArray);
+        HttpResponse<String> response = createConnection(address, elementedArray, null, null, "POST");
         if(response.statusCode() != 200) throw new RuntimeException("Could not connect to " + address);
         JsonObject jso = new JsonParser().parse(response.body()).getAsJsonObject();
         JsonArray bookArray = jso.getAsJsonObject("_embedded").getAsJsonArray("bookList");

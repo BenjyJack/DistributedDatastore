@@ -7,7 +7,6 @@ import java.io.*;
 import java.lang.reflect.Type;
 import java.net.*;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -85,12 +84,12 @@ public class BookStoreController {
         JsonObject json = new JsonObject();
         json.addProperty("id", this.id);
         json.addProperty("address", this.url + "/bookstores/" + this.id);
-        createPutConnection(hubUrl, json);
+        createConnection(hubUrl, json, this.url, this.id, "PUT");
         logger.info("Server {} connected to network at {}", this.id, this.url);
     }
 
     private HashMap<Long, String> reclaimMap() throws Exception {
-        HttpResponse<String> response = createGetConnection(hubUrl, this.url, id);
+        HttpResponse<String> response = createConnection(hubUrl, null, this.url, id, "GET");
         String json = response.body();
         Gson gson = new Gson();
         Type type = new TypeToken<HashMap<Long, String>>(){}.getType();
@@ -99,7 +98,7 @@ public class BookStoreController {
     }
 
     private Long getLeader() throws Exception {
-        HttpResponse<String> response = createGetConnection(hubUrl + "/leader", this.url, id);
+        HttpResponse<String> response = createConnection(hubUrl + "/leader", null, this.url, id, "GET");
         logger.info("Leader found. Mission Accomplished");
         return Long.parseLong(response.body());
     }
@@ -185,7 +184,7 @@ public class BookStoreController {
     }
 
     private EntityModel<BookStore> getAndParseBookStore(String address) throws Exception{
-        HttpResponse<String> response = createGetConnection(address, this.url, id);
+        HttpResponse<String> response = createConnection(address, null, this.url, id, "GET");
         JsonParser parser = new JsonParser();
         JsonObject jso = parser.parse(response.body()).getAsJsonObject();
         BookStore store = new BookStore();
@@ -215,7 +214,7 @@ public class BookStoreController {
                 logger.warn("Server {} was attempted but does not exist", parsedId);
                 continue;
             }
-            HttpResponse<String> response = createGetConnection(address, this.url, this.id);
+            HttpResponse<String> response = createConnection(address, null, this.url, this.id, "GET");
             if(response.statusCode() != 200) {
                 logger.warn("Server {} was not reached", parsedId);
                 continue;
@@ -253,7 +252,7 @@ public class BookStoreController {
             storeRepository.findById(storeID).orElseThrow(() -> new BookStoreNotFoundException(storeID));
             storeRepository.deleteById(storeID);
             this.map.remove(storeID);
-            createDeleteConnection(hubUrl + "/" + storeID);
+            createConnection(hubUrl + "/" + storeID, null, this.url, this.id, "DELETE");
             List<Book> books = bookRepository.findByStoreID(storeID);
             for (Book book : books) {
                 bookRepository.delete(book);
@@ -288,7 +287,7 @@ public class BookStoreController {
     private EntityModel<BookStore> postToHub(BookStore bookStore) throws Exception {
         JsonObject jso = new JsonObject();
         jso.addProperty("address", this.url + "/bookstores/");
-        HttpResponse<String> response = createPostConnection(hubUrl, jso);
+        HttpResponse<String> response = createConnection(hubUrl, jso, this.url, this.id, "POST");
         bookStore.setServerId(Long.parseLong(response.body()));
         this.id = bookStore.getServerId();
         return bookStoreModelAssembler.toModel(storeRepository.save(bookStore));

@@ -14,13 +14,10 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import javax.annotation.PostConstruct;
-import java.net.HttpURLConnection;
 import java.net.URI;
-import java.net.URL;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 
