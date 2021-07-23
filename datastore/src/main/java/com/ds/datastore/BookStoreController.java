@@ -16,9 +16,7 @@ import javax.annotation.PostConstruct;
 import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 
-import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
-import io.github.resilience4j.retry.annotation.Retry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,7 +27,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
-import static com.ds.datastore.Utilities.*;
 
 @RestController
 public class BookStoreController {
@@ -60,16 +57,13 @@ public class BookStoreController {
         this.utilities = utilities;
     }
 
-    //Tried putting a retry and cicuit breaker here. Did not work
     @PostConstruct
     public void restartChangedOrNew() throws Exception {
         try {
                 this.map.setMap(reclaimMap());
-
         }catch (Exception e) {
                 System.out.println(e.getClass());
-            }
-
+        }
         List<BookStore> bookStoreList = storeRepository.findAll();
         if(!bookStoreList.isEmpty()) {
             BookStore bookStore = bookStoreList.get(0);
@@ -79,7 +73,6 @@ public class BookStoreController {
                 registerWithHub();
             }
         }
-
         this.leader.setLeader(getLeader());
         logger.info("Server initialized B-)");
     }
@@ -91,8 +84,6 @@ public class BookStoreController {
         utilities.createConnection(hubUrl, json, this.url, this.id, "PUT");
         logger.info("Server {} connected to network at {}", this.id, this.url);
     }
-
-
 
     public HashMap<Long, String> reclaimMap() throws Exception {
         HttpResponse<String> response = utilities.createConnection(hubUrl, null, this.url, id, "GET");
@@ -124,7 +115,7 @@ public class BookStoreController {
         }
         EntityModel<BookStore> entityModel = postToHub(bookStore);
         System.out.println(map.getMap().toString());
-        logger.info("Store posted. Use of server functions may now proceed. Side effects may include: who the heck knows");
+        logger.info("Store posted.");
         return ResponseEntity
                 .created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
                 .body(entityModel);
@@ -217,7 +208,7 @@ public class BookStoreController {
             Long parsedId = Long.parseLong(storeID);
             String address = this.map.get(parsedId);
             if(address == null) {
-                logger.warn("Server {} was attempted but does not exist", parsedId);
+                logger.warn("Server {} does not exist", parsedId);
                 continue;
             }
             HttpResponse<String> response = utilities.createConnection(address, null, this.url, this.id, "GET");
@@ -267,7 +258,7 @@ public class BookStoreController {
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
         }catch (BookStoreNotFoundException e){
             if(this.map.containsKey(storeID)){
-                logger.info("Corporate sabotage is Assur, except in a Karpeif against Ben & Jerry's");
+                logger.info("Illegal Attempt");
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }else{
                 throw e;
@@ -281,7 +272,7 @@ public class BookStoreController {
         JsonObject jso = new JsonParser().parse(json).getAsJsonObject();
         Long id = jso.get("id").getAsLong();
         this.map.remove(id);
-        logger.info(id + " don't exist no more");
+        logger.info("{} has been deleted", id);
     }
 
     @RateLimiter(name = "DDoS-stopper")
