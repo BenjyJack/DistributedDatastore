@@ -104,7 +104,6 @@ public class BookController {
                 book.setStoreID(Long.parseLong(storeId));
                 if(!this.map.containsKey(Long.parseLong(storeId))) continue;
                 String address = this.map.get(Long.parseLong(storeId)) + "/books";
-
                 Optional<HttpResponse<String>> optional = utilities.createConnectionCircuitBreaker(address, book.makeJson(), null, null, "POST");
                 if(optional.isEmpty()){
                     continue;

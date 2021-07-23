@@ -51,7 +51,7 @@ public class Utilities {
     }
 
     @Retry(name = "retry")
-    @CircuitBreaker(name = "circuitbreaker", fallbackMethod = "fallback")
+    @CircuitBreaker(name = "#root.args[0]", fallbackMethod = "fallback")
     public Optional<HttpResponse<String>> createConnectionCircuitBreaker(String address, JsonObject jso, String serverAddress, Long id, String requestType) throws Exception{
         System.out.println("utilities called");
         HttpResponse<String> response = createConnection(address, jso, serverAddress, id, requestType);
