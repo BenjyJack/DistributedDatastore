@@ -79,7 +79,6 @@ public class BookController {
         return this.storeRepository.findAll().get(0).getServerId().equals(this.leader.getLeader());
     }
 
-    //Retry only worked when placed here, on the more global method but did not work on the Utilities method
     @RateLimiter(name = "DDoS-stopper")
     @PostMapping("/bookstores/book")
     protected CollectionModel<EntityModel<Book>> oneBookToManyStores(@RequestBody Book book, @RequestParam List<String> id) throws Exception {

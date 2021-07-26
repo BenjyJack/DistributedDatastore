@@ -4,6 +4,8 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
@@ -17,10 +19,10 @@ import java.util.Optional;
 
 @Component
 public class Utilities {
+    Logger logger = LoggerFactory.getLogger(Utilities.class);
 
     @Retry(name = "retry")
     public HttpResponse<String> createConnection(String address, JsonObject jso, String serverAddress, Long id, String requestType) throws Exception{
-        System.out.println("utilities called");
         Gson gson = new Gson();
         String json = gson.toJson(jso);
         Builder builder = HttpRequest.newBuilder()
@@ -44,7 +46,7 @@ public class Utilities {
                 .build()
                 .send(request, HttpResponse.BodyHandlers.ofString());
         if(requestType.equals("POST") && (response.statusCode() != 201 && response.statusCode() != 200) ){
-                System.out.println(response.statusCode());
+                logger.warn("Did not receive a successful status code");
                 throw new RuntimeException();
         }
         return response;

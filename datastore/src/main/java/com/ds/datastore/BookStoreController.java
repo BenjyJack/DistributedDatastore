@@ -62,7 +62,7 @@ public class BookStoreController {
         try {
                 this.map.setMap(reclaimMap());
         }catch (Exception e) {
-                System.out.println(e.getClass());
+                logger.error("unable to get map from HUB", e);
         }
         List<BookStore> bookStoreList = storeRepository.findAll();
         if(!bookStoreList.isEmpty()) {
@@ -85,7 +85,7 @@ public class BookStoreController {
         logger.info("Server {} connected to network at {}", this.id, this.url);
     }
 
-    public HashMap<Long, String> reclaimMap() throws Exception {
+    private HashMap<Long, String> reclaimMap() throws Exception {
         HttpResponse<String> response = utilities.createConnection(hubUrl, null, this.url, id, "GET");
         String json = response.body();
         Gson gson = new Gson();
