@@ -46,7 +46,7 @@ public class Utilities {
                 .build()
                 .send(request, HttpResponse.BodyHandlers.ofString());
         if(requestType.equals("POST") && (response.statusCode() != 201 && response.statusCode() != 200) ){
-                logger.warn("Did not receive a successful status code");
+                logger.warn("{} received, POST failed", response.statusCode());
                 throw new RuntimeException();
         }
         return response;
@@ -61,18 +61,7 @@ public class Utilities {
     }
 
     private Optional<HttpResponse<String>> fallback(String address, JsonObject jso, String serverAddress, Long id, String requestType, RuntimeException e) {
-        System.out.println("falling back");
-        // if(this.fallbackAddress == null){
-        //         this.fallbackAddress = address;
-        // }else{
-        //         if(!this.fallbackAddress.equals(address)){
-        //                 this.fallbackAddress = address;
-        //                 try {
-        //                         return Optional.of(createConnection(address, jso, serverAddress, id, requestType));
-        //                 } catch (Exception e1) {
-        //                 }  
-        //         }
-        // }
+        logger.info("entered fall back");
         return Optional.empty();
     }
 }
