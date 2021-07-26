@@ -60,7 +60,7 @@ public class BookController {
     @PostMapping("/bookstores/{storeID}/books")
     protected ResponseEntity<EntityModel<Book>> newBook(@RequestBody Book book, @PathVariable Long storeID, HttpServletRequest request) throws Exception{
         String orderID = null;
-        if(request.getAttribute("orderID") == null)
+        if(request.getHeader("orderID") == null)
         {
             orderID = String.valueOf(Math.random() * 10000);
             request.setAttribute("orderID",orderID );
@@ -93,7 +93,7 @@ public class BookController {
     @PostMapping("/bookstores/book")
     protected CollectionModel<EntityModel<Book>> oneBookToManyStores(@RequestBody Book book, @RequestParam List<String> id, HttpServletRequest request) throws Exception {
         String orderID = null;
-        if(request.getAttribute("orderID") == null)
+        if(request.getHeader("orderID") == null)
         {
             orderID = String.valueOf(Math.random() * 10000);
             request.setAttribute("orderID",orderID );
