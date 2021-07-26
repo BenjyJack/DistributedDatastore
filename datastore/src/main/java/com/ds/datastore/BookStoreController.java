@@ -10,6 +10,7 @@ import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.UUID;
 
 import javax.annotation.PostConstruct;
 
@@ -60,9 +61,9 @@ public class BookStoreController {
     @PostConstruct
     public void restartChangedOrNew() throws Exception {
         try {
-                this.map.setMap(reclaimMap());
+            this.map.setMap(reclaimMap());
         }catch (Exception e) {
-                logger.error("unable to get map from HUB", e);
+            logger.error("unable to get map from HUB", e);
         }
         List<BookStore> bookStoreList = storeRepository.findAll();
         if(!bookStoreList.isEmpty()) {
@@ -81,12 +82,12 @@ public class BookStoreController {
         JsonObject json = new JsonObject();
         json.addProperty("id", this.id);
         json.addProperty("address", this.url + "/bookstores/" + this.id);
-        utilities.createConnection(hubUrl, json, this.url, this.id, "PUT", String.valueOf(Math.random()*10000));
+        utilities.createConnection(hubUrl, json, this.url, this.id, "PUT", String.valueOf(UUID.randomUUID()));
         logger.info("Server {} connected to network at {}", this.id, this.url);
     }
 
     private HashMap<Long, String> reclaimMap() throws Exception {
-        HttpResponse<String> response = utilities.createConnection(hubUrl, null, this.url, id, "GET",String.valueOf(Math.random()*10000));
+        HttpResponse<String> response = utilities.createConnection(hubUrl, null, this.url, id, "GET", String.valueOf(UUID.randomUUID()));
         String json = response.body();
         Gson gson = new Gson();
         Type type = new TypeToken<HashMap<Long, String>>(){}.getType();
@@ -95,7 +96,7 @@ public class BookStoreController {
     }
 
     private Long getLeader() throws Exception {
-        HttpResponse<String> response = utilities.createConnection(hubUrl + "/leader", null, this.url, id, "GET",String.valueOf(Math.random()*10000));
+        HttpResponse<String> response = utilities.createConnection(hubUrl + "/leader", null, this.url, id, "GET", String.valueOf(UUID.randomUUID()));
         logger.info("Leader found. Mission Accomplished");
         return Long.parseLong(response.body());
     }
@@ -181,7 +182,7 @@ public class BookStoreController {
     }
 
     private EntityModel<BookStore> getAndParseBookStore(String address) throws Exception{
-        HttpResponse<String> response = utilities.createConnection(address, null, this.url, id, "GET",String.valueOf(Math.random()*10000));
+        HttpResponse<String> response = utilities.createConnection(address, null, this.url, id, "GET", String.valueOf(UUID.randomUUID()));
         JsonParser parser = new JsonParser();
         JsonObject jso = parser.parse(response.body()).getAsJsonObject();
         BookStore store = new BookStore();
@@ -211,7 +212,7 @@ public class BookStoreController {
                 logger.warn("Server {} does not exist", parsedId);
                 continue;
             }
-            HttpResponse<String> response = utilities.createConnection(address, null, this.url, this.id, "GET", String.valueOf(Math.random()*10000));
+            HttpResponse<String> response = utilities.createConnection(address, null, this.url, this.id, "GET", String.valueOf(UUID.randomUUID()));
             if(response.statusCode() != 200) {
                 logger.warn("Server {} was not reached", parsedId);
                 continue;
@@ -249,7 +250,7 @@ public class BookStoreController {
             storeRepository.findById(storeID).orElseThrow(() -> new BookStoreNotFoundException(storeID));
             storeRepository.deleteById(storeID);
             this.map.remove(storeID);
-            utilities.createConnection(hubUrl + "/" + storeID, null, this.url, this.id, "DELETE", String.valueOf(Math.random()*10000));
+            utilities.createConnection(hubUrl + "/" + storeID, null, this.url, this.id, "DELETE", String.valueOf(UUID.randomUUID()));
             List<Book> books = bookRepository.findByStoreID(storeID);
             for (Book book : books) {
                 bookRepository.delete(book);
@@ -284,7 +285,7 @@ public class BookStoreController {
     private EntityModel<BookStore> postToHub(BookStore bookStore) throws Exception {
         JsonObject jso = new JsonObject();
         jso.addProperty("address", this.url + "/bookstores/");
-        HttpResponse<String> response = utilities.createConnection(hubUrl, jso, this.url, this.id, "POST", String.valueOf(Math.random()*10000));
+        HttpResponse<String> response = utilities.createConnection(hubUrl, jso, this.url, this.id, "POST", String.valueOf(UUID.randomUUID()));
         bookStore.setServerId(Long.parseLong(response.body()));
         this.id = bookStore.getServerId();
         return bookStoreModelAssembler.toModel(storeRepository.save(bookStore));
