@@ -22,7 +22,7 @@ public class Utilities {
     Logger logger = LoggerFactory.getLogger(Utilities.class);
 
     @Retry(name = "retry")
-    public HttpResponse<String> createConnection(String address, JsonObject jso, String serverAddress, Long id, String requestType) throws Exception{
+    public HttpResponse<String> createConnection(String address, JsonObject jso, String serverAddress, Long id, String requestType, String orderID) throws Exception{
         Gson gson = new Gson();
         String json = gson.toJson(jso);
         Builder builder = HttpRequest.newBuilder()
@@ -41,10 +41,11 @@ public class Utilities {
         }else if (requestType.equals("DELETE")) {
                 builder = builder.DELETE();
         }
-        HttpRequest request = builder.build();
+        HttpRequest request = builder.setHeader("orderID", orderID).build();
         HttpResponse<String> response = HttpClient.newBuilder()
                 .build()
                 .send(request, HttpResponse.BodyHandlers.ofString());
+        logger.info("post ws created with orderID {}", orderID);
         if(requestType.equals("POST") && (response.statusCode() != 201 && response.statusCode() != 200) ){
                 logger.warn("{} received, POST failed", response.statusCode());
                 throw new RuntimeException();
@@ -54,9 +55,8 @@ public class Utilities {
 
     @Retry(name = "retry")
     @CircuitBreaker(name = "#root.args[0]", fallbackMethod = "fallback")
-    public Optional<HttpResponse<String>> createConnectionCircuitBreaker(String address, JsonObject jso, String serverAddress, Long id, String requestType) throws Exception{
-        System.out.println("utilities called");
-        HttpResponse<String> response = createConnection(address, jso, serverAddress, id, requestType);
+    public Optional<HttpResponse<String>> createConnectionCircuitBreaker(String address, JsonObject jso, String serverAddress, Long id, String requestType, String orderID) throws Exception{
+        HttpResponse<String> response = createConnection(address, jso, serverAddress, id, requestType, orderID);
         return Optional.ofNullable(response);
     }
 

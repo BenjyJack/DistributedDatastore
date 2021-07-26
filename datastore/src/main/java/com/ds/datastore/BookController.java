@@ -34,6 +34,8 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 
+import javax.servlet.http.HttpServletRequest;
+
 @RestController
 public class BookController {
 
@@ -56,7 +58,15 @@ public class BookController {
 
     @RateLimiter(name = "DDoS-stopper")
     @PostMapping("/bookstores/{storeID}/books")
-    protected ResponseEntity<EntityModel<Book>> newBook(@RequestBody Book book, @PathVariable Long storeID) throws Exception{
+    protected ResponseEntity<EntityModel<Book>> newBook(@RequestBody Book book, @PathVariable Long storeID, HttpServletRequest request) throws Exception{
+        String orderID = null;
+        if(request.getAttribute("orderID") == null)
+        {
+            orderID = String.valueOf(Math.random() * 10000);
+            request.setAttribute("orderID",orderID );
+            logger.info("request id is {}", orderID);
+        }
+        logger.info("received request with orderID {}", request.getAttribute("orderID"));
         try{
             BookStore store = checkStore(storeID);
             book.setStoreID(storeID);
@@ -81,12 +91,19 @@ public class BookController {
 
     @RateLimiter(name = "DDoS-stopper")
     @PostMapping("/bookstores/book")
-    protected CollectionModel<EntityModel<Book>> oneBookToManyStores(@RequestBody Book book, @RequestParam List<String> id) throws Exception {
+    protected CollectionModel<EntityModel<Book>> oneBookToManyStores(@RequestBody Book book, @RequestParam List<String> id, HttpServletRequest request) throws Exception {
+        String orderID = null;
+        if(request.getAttribute("orderID") == null)
+        {
+            orderID = String.valueOf(Math.random() * 10000);
+            request.setAttribute("orderID",orderID );
+            logger.info("request id is {}", orderID);
+        }
         List<EntityModel<Book>> entityList = new ArrayList<>();
         if (!amILeader()) {
             String address = this.map.get(this.leader.getLeader());
             address = removeIDNum(address) + "book?id=" + String.join(",", id);
-            HttpResponse<String> response = (utilities.createConnection(address, book.makeJson(), null, null, "POST"));
+            HttpResponse<String> response = (utilities.createConnection(address, book.makeJson(), null, null, "POST", orderID));
             if(response.statusCode() != 200){
                 logger.warn("Server {} was not reached", leader.getLeader());
                 throw new RuntimeException("Could not connect to " + address);
@@ -99,11 +116,12 @@ public class BookController {
             }
             logger.info("Batch request successfully executed by {}", leader.getLeader());
         }else{
+            logger.info("leader handling request with orderID {}", request.getAttribute("orderID"));
             for(String storeId : id) {
                 book.setStoreID(Long.parseLong(storeId));
                 if(!this.map.containsKey(Long.parseLong(storeId))) continue;
                 String address = this.map.get(Long.parseLong(storeId)) + "/books";
-                Optional<HttpResponse<String>> optional = utilities.createConnectionCircuitBreaker(address, book.makeJson(), null, null, "POST");
+                Optional<HttpResponse<String>> optional = utilities.createConnectionCircuitBreaker(address, book.makeJson(), null, null, "POST", orderID);
                 if(optional.isEmpty()){
                     continue;
                 }
@@ -114,15 +132,21 @@ public class BookController {
             }
             logger.info("Batch request successfully handled");
         }
-        return CollectionModel.of(entityList, linkTo(methodOn(BookController.class).oneBookToManyStores(null, null)).withSelfRel());
+        return CollectionModel.of(entityList, linkTo(methodOn(BookController.class).oneBookToManyStores(null, null, null)).withSelfRel());
     }
 
     //Retry only worked when placed here, on the more global method but did not work on the Utilities method
     @RateLimiter(name = "DDoS-stopper")
     @PostMapping("/bookstores/books")
-    protected CollectionModel<EntityModel<Book>> multipleToMultiple(@RequestBody BookArray json) throws Exception {
+    protected CollectionModel<EntityModel<Book>> multipleToMultiple(@RequestBody BookArray json, HttpServletRequest request) throws Exception {
+        String orderID = null;
+        if(request.getAttribute("orderID") == null)
+        {
+            orderID = String.valueOf(Math.random() * 10000);
+            request.setAttribute("orderID",orderID );
+        }
         if(!amILeader()){
-            return multipleToLeader(json);
+            return multipleToLeader(json, request);
         }
         List<EntityModel<Book>> entityModelList = new ArrayList<>();
         for (Book book: json.getBooks()) {
@@ -131,7 +155,7 @@ public class BookController {
             }
             JsonObject jso = book.makeJson();
             jso.addProperty("storeID", book.getStoreID());
-            Optional<HttpResponse<String>> optional = utilities.createConnectionCircuitBreaker(this.map.get(book.getStoreID()) + "/books", jso, null, null, "POST");
+            Optional<HttpResponse<String>> optional = utilities.createConnectionCircuitBreaker(this.map.get(book.getStoreID()) + "/books", jso, null, null, "POST", orderID);
             if(!optional.isEmpty()) {
                 entityModelList.add(assembler.toModel(book));
             }
@@ -144,7 +168,13 @@ public class BookController {
         return address.substring(0,address.lastIndexOf("/") + 1);
     }
 
-    private CollectionModel<EntityModel<Book>> multipleToLeader(BookArray array) throws Exception {
+    private CollectionModel<EntityModel<Book>> multipleToLeader(BookArray array, HttpServletRequest request) throws Exception {
+        String orderID = null;
+        if(request.getAttribute("orderID") == null)
+        {
+            orderID = String.valueOf(Math.random() * 10000);
+            request.setAttribute("orderID",orderID );
+        }
         String address = this.map.get(leader.getLeader());
         address = removeIDNum(address) + "books";
         JsonArray jsonArray = new JsonArray();
@@ -155,7 +185,7 @@ public class BookController {
         }
         JsonObject elementedArray = new JsonObject();
         elementedArray.add("books", jsonArray);
-        HttpResponse<String> response = utilities.createConnection(address, elementedArray, null, null, "POST");
+        HttpResponse<String> response = utilities.createConnection(address, elementedArray, null, null, "POST", orderID);
         if(response.statusCode() != 200) throw new RuntimeException("Could not connect to " + address);
         JsonObject jso = new JsonParser().parse(response.body()).getAsJsonObject();
         JsonArray bookArray = jso.getAsJsonObject("_embedded").getAsJsonArray("bookList");
