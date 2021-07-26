@@ -1,5 +1,6 @@
 package com.hub;
 
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -13,13 +14,10 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import javax.annotation.PostConstruct;
-import java.net.HttpURLConnection;
 import java.net.URI;
-import java.net.URL;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 
@@ -73,6 +71,7 @@ public class HubController {
         return null;
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @PostMapping("/hub")
     protected Long addServer(@RequestBody String json) throws Exception {
         String address = parseAddressFromJsonString(json);
@@ -95,20 +94,16 @@ public class HubController {
         return serverId;
     }
 
-    private void sendLeader() throws IOException {
+    private void sendLeader() throws Exception {
         for(String address : hub.getMap().values())
         {
-            URL url = new URL(address + "/leader");
-            HttpURLConnection con = (HttpURLConnection) url.openConnection();
-            con.setRequestMethod("PUT");
-            con.setRequestProperty("Content-Type", "application/json");
-            con.setDoOutput(true);
-            try(OutputStream os = con.getOutputStream()) {
-                byte[] input = leader.getBytes(StandardCharsets.UTF_8);
-                os.write(input, 0, input.length);
-            }
-            int y = con.getResponseCode();
-            con.disconnect();
+            HttpRequest request = HttpRequest.newBuilder()
+                        .uri(new URI(address + "/leader"))
+                        .PUT(HttpRequest.BodyPublishers.ofString(leader))
+                        .build();
+            HttpResponse<String> response = HttpClient.newBuilder()
+                        .build()
+                        .send(request, HttpResponse.BodyHandlers.ofString());
         }
     }
 
@@ -137,12 +132,14 @@ public class HubController {
         }
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @GetMapping("/hub")
     protected String getMap() {
         Gson gson = new Gson();
         return gson.toJson(this.hub.getMap());
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @GetMapping("/hub/leader")
     protected String getLeader(@RequestHeader(name = "referer") String address, @RequestHeader(name = "id") String id) throws IOException {
         if(leader == null && !id.equals("null")){
@@ -179,6 +176,7 @@ public class HubController {
         }
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @PutMapping("/hub")
     protected void updateAddress(@RequestBody String json) throws Exception {
         JsonParser parser = new JsonParser();
@@ -193,6 +191,7 @@ public class HubController {
         logger.info(id + "'s address has changed to " + address);
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @DeleteMapping("/hub/{serverID}")
     protected void removeServerFromNetwork(@PathVariable Long serverID) throws Exception{
         if(!this.hub.removeServer(serverID)) return;

@@ -7,7 +7,6 @@ import java.io.*;
 import java.lang.reflect.Type;
 import java.net.*;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -16,8 +15,8 @@ import javax.annotation.PostConstruct;
 
 import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
-import com.google.gson.stream.JsonReader;
 
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,7 +27,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
-import static com.ds.datastore.Utilities.*;
 
 @RestController
 public class BookStoreController {
@@ -40,7 +38,8 @@ public class BookStoreController {
     private ServerMap map;
     private Long id = null;
     private Leader leader;
-    Logger logger = LoggerFactory.getLogger(BookStoreController.class);
+    private Logger logger = LoggerFactory.getLogger(BookStoreController.class);
+    private Utilities utilities;
 
     @Value("${application.baseUrl}")
     private String url;
@@ -48,18 +47,23 @@ public class BookStoreController {
     @Value("${hub.url}")
     private String hubUrl;
 
-    public BookStoreController(BookStoreModelAssembler bookStoreModelAssembler, BookModelAssembler bookModelAssembler, BookRepository bookRepository, BookStoreRepository storeRepository, ServerMap map, Leader leader) {
+    public BookStoreController(BookStoreModelAssembler bookStoreModelAssembler, BookModelAssembler bookModelAssembler, BookRepository bookRepository, BookStoreRepository storeRepository, ServerMap map, Leader leader, Utilities utilities) {
         this.bookStoreModelAssembler = bookStoreModelAssembler;
         this.bookModelAssembler = bookModelAssembler;
         this.bookRepository = bookRepository;
         this.storeRepository = storeRepository;
         this.map = map;
         this.leader = leader;
+        this.utilities = utilities;
     }
 
     @PostConstruct
-    private void restartChangedOrNew() throws Exception {
-        this.map.setMap(reclaimMap());
+    public void restartChangedOrNew() throws Exception {
+        try {
+                this.map.setMap(reclaimMap());
+        }catch (Exception e) {
+                logger.error("unable to get map from HUB", e);
+        }
         List<BookStore> bookStoreList = storeRepository.findAll();
         if(!bookStoreList.isEmpty()) {
             BookStore bookStore = bookStoreList.get(0);
@@ -69,7 +73,6 @@ public class BookStoreController {
                 registerWithHub();
             }
         }
-
         this.leader.setLeader(getLeader());
         logger.info("Server initialized B-)");
     }
@@ -78,12 +81,12 @@ public class BookStoreController {
         JsonObject json = new JsonObject();
         json.addProperty("id", this.id);
         json.addProperty("address", this.url + "/bookstores/" + this.id);
-        createPutConnection(hubUrl, json);
+        utilities.createConnection(hubUrl, json, this.url, this.id, "PUT");
         logger.info("Server {} connected to network at {}", this.id, this.url);
     }
 
     private HashMap<Long, String> reclaimMap() throws Exception {
-        HttpResponse<String> response = createGetConnection(hubUrl, this.url, id);
+        HttpResponse<String> response = utilities.createConnection(hubUrl, null, this.url, id, "GET");
         String json = response.body();
         Gson gson = new Gson();
         Type type = new TypeToken<HashMap<Long, String>>(){}.getType();
@@ -92,17 +95,19 @@ public class BookStoreController {
     }
 
     private Long getLeader() throws Exception {
-        HttpResponse<String> response = createGetConnection(hubUrl + "/leader", this.url, id);
+        HttpResponse<String> response = utilities.createConnection(hubUrl + "/leader", null, this.url, id, "GET");
         logger.info("Leader found. Mission Accomplished");
         return Long.parseLong(response.body());
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @PutMapping("/bookstores/{storeID}/leader")
     protected void setLeader(@RequestBody Long leader)
     {
         this.leader.setLeader(leader);
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @PostMapping("/bookstores")
     protected ResponseEntity<EntityModel<BookStore>> newBookStore(@RequestBody BookStore bookStore) throws Exception {
         if (this.id != null) {
@@ -110,12 +115,13 @@ public class BookStoreController {
         }
         EntityModel<BookStore> entityModel = postToHub(bookStore);
         System.out.println(map.getMap().toString());
-        logger.info("Store posted. Use of server functions may now proceed. Side effects may include: who the heck knows");
+        logger.info("Store posted.");
         return ResponseEntity
                 .created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
                 .body(entityModel);
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @PostMapping("/bookstores/{id}")
     protected void addServer(@RequestBody String json, @PathVariable String id) {
         JsonObject jso = new JsonParser().parse(json).getAsJsonObject();
@@ -125,6 +131,7 @@ public class BookStoreController {
         logger.info(givenID + " has joined the network");
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @GetMapping("/bookstores/{storeID}")
     protected ResponseEntity<EntityModel<BookStore>> one(@PathVariable Long storeID) throws Exception {
         try{
@@ -144,6 +151,7 @@ public class BookStoreController {
         }
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @GetMapping("/bookstores")
     protected CollectionModel<EntityModel<BookStore>> getBookStores(@RequestParam(required = false) List<String> id) throws Exception {
         List<EntityModel<BookStore>> entModelList = new ArrayList<>();
@@ -173,7 +181,7 @@ public class BookStoreController {
     }
 
     private EntityModel<BookStore> getAndParseBookStore(String address) throws Exception{
-        HttpResponse<String> response = createGetConnection(address, this.url, id);
+        HttpResponse<String> response = utilities.createConnection(address, null, this.url, id, "GET");
         JsonParser parser = new JsonParser();
         JsonObject jso = parser.parse(response.body()).getAsJsonObject();
         BookStore store = new BookStore();
@@ -185,6 +193,7 @@ public class BookStoreController {
         return bookStoreModelAssembler.toModel(store);
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @GetMapping("/bookstores/books")
     protected CollectionModel<EntityModel<Book>> getAllBooksFromBookStores(@RequestParam (required = false) List<String> id) throws Exception {
         if(id == null) {
@@ -199,10 +208,10 @@ public class BookStoreController {
             Long parsedId = Long.parseLong(storeID);
             String address = this.map.get(parsedId);
             if(address == null) {
-                logger.warn("Server {} was attempted but does not exist", parsedId);
+                logger.warn("Server {} does not exist", parsedId);
                 continue;
             }
-            HttpResponse<String> response = createGetConnection(address, this.url, this.id);
+            HttpResponse<String> response = utilities.createConnection(address, null, this.url, this.id, "GET");
             if(response.statusCode() != 200) {
                 logger.warn("Server {} was not reached", parsedId);
                 continue;
@@ -219,6 +228,7 @@ public class BookStoreController {
         return CollectionModel.of(entModelList, linkTo(methodOn(BookStoreController.class).getAllBooksFromBookStores(null)).withSelfRel());
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @PutMapping("/bookstores/{storeID}")
     protected BookStore updateBookStore(@RequestBody BookStore newBookStore, @PathVariable Long storeID) {
         return storeRepository.findById(storeID)
@@ -232,13 +242,14 @@ public class BookStoreController {
                 .orElseThrow(() -> new BookStoreNotFoundException(storeID));
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @DeleteMapping("/bookstores/{storeID}")
     protected ResponseEntity<EntityModel<BookStore>> deleteBookStore(@PathVariable Long storeID) throws Exception{
         try{
             storeRepository.findById(storeID).orElseThrow(() -> new BookStoreNotFoundException(storeID));
             storeRepository.deleteById(storeID);
             this.map.remove(storeID);
-            createDeleteConnection(hubUrl + "/" + storeID);
+            utilities.createConnection(hubUrl + "/" + storeID, null, this.url, this.id, "DELETE");
             List<Book> books = bookRepository.findByStoreID(storeID);
             for (Book book : books) {
                 bookRepository.delete(book);
@@ -247,7 +258,7 @@ public class BookStoreController {
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
         }catch (BookStoreNotFoundException e){
             if(this.map.containsKey(storeID)){
-                logger.info("Corporate sabotage is Assur, except in a Karpeif against Ben & Jerry's");
+                logger.info("Illegal Attempt");
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }else{
                 throw e;
@@ -255,13 +266,16 @@ public class BookStoreController {
         }
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @DeleteMapping("/bookstores/map")
     protected void deleteFromMap(@RequestBody String json){
         JsonObject jso = new JsonParser().parse(json).getAsJsonObject();
         Long id = jso.get("id").getAsLong();
         this.map.remove(id);
-        logger.info(id + " don't exist no more");
+        logger.info("{} has been deleted", id);
     }
+
+    @RateLimiter(name = "DDoS-stopper")
     @GetMapping("/bookstores/{storeID}/ping")
     protected boolean ping() {
         return true;
@@ -270,7 +284,7 @@ public class BookStoreController {
     private EntityModel<BookStore> postToHub(BookStore bookStore) throws Exception {
         JsonObject jso = new JsonObject();
         jso.addProperty("address", this.url + "/bookstores/");
-        HttpResponse<String> response = createPostConnection(hubUrl, jso);
+        HttpResponse<String> response = utilities.createConnection(hubUrl, jso, this.url, this.id, "POST");
         bookStore.setServerId(Long.parseLong(response.body()));
         this.id = bookStore.getServerId();
         return bookStoreModelAssembler.toModel(storeRepository.save(bookStore));

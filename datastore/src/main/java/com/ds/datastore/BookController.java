@@ -1,25 +1,38 @@
 package com.ds.datastore;
 
-import static com.ds.datastore.Utilities.*;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
-
-import com.google.gson.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.hateoas.CollectionModel;
-import org.springframework.hateoas.EntityModel;
-import org.springframework.hateoas.IanaLinkRelations;
-import org.springframework.http.ResponseEntity;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.hateoas.CollectionModel;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.IanaLinkRelations;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.util.UriComponentsBuilder;
+
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 
 @RestController
 public class BookController {
@@ -30,15 +43,18 @@ public class BookController {
     private ServerMap map;
     private Leader leader;
     Logger logger = LoggerFactory.getLogger(BookController.class);
+    private Utilities utilities;
 
-    public BookController(BookRepository repository, BookModelAssembler assembler, BookStoreRepository storeRepository, ServerMap map, Leader leader) {
+    public BookController(BookRepository repository, BookModelAssembler assembler, BookStoreRepository storeRepository, ServerMap map, Leader leader, Utilities utilities) {
         this.repository = repository;
         this.assembler = assembler;
         this.storeRepository = storeRepository;
         this.map = map;
         this.leader = leader;
+        this.utilities = utilities;
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @PostMapping("/bookstores/{storeID}/books")
     protected ResponseEntity<EntityModel<Book>> newBook(@RequestBody Book book, @PathVariable Long storeID) throws Exception{
         try{
@@ -63,13 +79,14 @@ public class BookController {
         return this.storeRepository.findAll().get(0).getServerId().equals(this.leader.getLeader());
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @PostMapping("/bookstores/book")
     protected CollectionModel<EntityModel<Book>> oneBookToManyStores(@RequestBody Book book, @RequestParam List<String> id) throws Exception {
         List<EntityModel<Book>> entityList = new ArrayList<>();
         if (!amILeader()) {
             String address = this.map.get(this.leader.getLeader());
             address = removeIDNum(address) + "book?id=" + String.join(",", id);
-            HttpResponse<String> response = createPostConnection(address, book.makeJson());
+            HttpResponse<String> response = (utilities.createConnection(address, book.makeJson(), null, null, "POST"));
             if(response.statusCode() != 200){
                 logger.warn("Server {} was not reached", leader.getLeader());
                 throw new RuntimeException("Could not connect to " + address);
@@ -82,14 +99,15 @@ public class BookController {
             }
             logger.info("Batch request successfully executed by {}", leader.getLeader());
         }else{
-            for(String storeId: id) {
+            for(String storeId : id) {
                 book.setStoreID(Long.parseLong(storeId));
                 if(!this.map.containsKey(Long.parseLong(storeId))) continue;
                 String address = this.map.get(Long.parseLong(storeId)) + "/books";
-                HttpResponse<String> response = createPostConnection(address, book.makeJson());
-                if(response.statusCode() != 201){
+                Optional<HttpResponse<String>> optional = utilities.createConnectionCircuitBreaker(address, book.makeJson(), null, null, "POST");
+                if(optional.isEmpty()){
                     continue;
                 }
+                HttpResponse<String> response = optional.get();
                 JsonParser parser = new JsonParser();
                 JsonObject jo = parser.parse(response.body()).getAsJsonObject();
                 entityList.add(assembler.toModel(new Book(jo)));
@@ -99,6 +117,8 @@ public class BookController {
         return CollectionModel.of(entityList, linkTo(methodOn(BookController.class).oneBookToManyStores(null, null)).withSelfRel());
     }
 
+    //Retry only worked when placed here, on the more global method but did not work on the Utilities method
+    @RateLimiter(name = "DDoS-stopper")
     @PostMapping("/bookstores/books")
     protected CollectionModel<EntityModel<Book>> multipleToMultiple(@RequestBody BookArray json) throws Exception {
         if(!amILeader()){
@@ -111,8 +131,10 @@ public class BookController {
             }
             JsonObject jso = book.makeJson();
             jso.addProperty("storeID", book.getStoreID());
-            createPostConnection(this.map.get(book.getStoreID()) + "/books", jso);
-            entityModelList.add(assembler.toModel(book));
+            Optional<HttpResponse<String>> optional = utilities.createConnectionCircuitBreaker(this.map.get(book.getStoreID()) + "/books", jso, null, null, "POST");
+            if(!optional.isEmpty()) {
+                entityModelList.add(assembler.toModel(book));
+            }
         }
         logger.info("Batch of multiple to multiple completed");
         return CollectionModel.of(entityModelList, linkTo(methodOn(BookController.class)).withSelfRel());
@@ -133,7 +155,7 @@ public class BookController {
         }
         JsonObject elementedArray = new JsonObject();
         elementedArray.add("books", jsonArray);
-        HttpResponse<String> response = createPostConnection(address, elementedArray);
+        HttpResponse<String> response = utilities.createConnection(address, elementedArray, null, null, "POST");
         if(response.statusCode() != 200) throw new RuntimeException("Could not connect to " + address);
         JsonObject jso = new JsonParser().parse(response.body()).getAsJsonObject();
         JsonArray bookArray = jso.getAsJsonObject("_embedded").getAsJsonArray("bookList");
@@ -146,6 +168,7 @@ public class BookController {
         return  CollectionModel.of(entityModels, linkTo(methodOn(BookController.class)).withSelfRel());
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @GetMapping("/bookstores/{storeID}/books/{bookId}")
     protected ResponseEntity<EntityModel<Book>> one(@PathVariable Long bookId, @PathVariable Long storeID) throws Exception{
         try{
@@ -163,6 +186,7 @@ public class BookController {
         }
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @GetMapping("/bookstores/{storeID}/books")
     protected ResponseEntity<CollectionModel<EntityModel<Book>>> all(@PathVariable Long storeID, @RequestParam(required = false) List<String> id) throws Exception{
         List<EntityModel<Book>> booksAll = null;
@@ -199,6 +223,7 @@ public class BookController {
         return ResponseEntity.ok(CollectionModel.of(entModelList, linkTo(methodOn(BookController.class).all(storeID, null)).withSelfRel()));
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @PutMapping("/bookstores/{storeID}/books/{id}")
     protected ResponseEntity<EntityModel<Book>> updateBook(@RequestBody Book newBook, @PathVariable Long id, @PathVariable Long storeID) throws Exception{
         try{
@@ -226,6 +251,7 @@ public class BookController {
         }
     }
 
+    @RateLimiter(name = "DDoS-stopper")
     @DeleteMapping("/bookstores/{storeID}/books/{id}")
     protected ResponseEntity<EntityModel<Book>> deleteBook(@PathVariable Long id, @PathVariable Long storeID) throws Exception{
         try{
