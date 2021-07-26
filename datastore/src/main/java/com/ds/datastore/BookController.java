@@ -65,6 +65,8 @@ public class BookController {
             orderID = String.valueOf(Math.random() * 10000);
             request.setAttribute("orderID",orderID );
             logger.info("Request ID: {}", orderID);
+        }else{
+            orderID = request.getHeader("orderID");
         }
         logger.info("Received request {}", request.getAttribute("orderID"));
         try{
