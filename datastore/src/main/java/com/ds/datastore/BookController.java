@@ -64,9 +64,9 @@ public class BookController {
         {
             orderID = String.valueOf(Math.random() * 10000);
             request.setAttribute("orderID",orderID );
-            logger.info("request id is {}", orderID);
+            logger.info("Request ID: {}", orderID);
         }
-        logger.info("received request with orderID {}", request.getAttribute("orderID"));
+        logger.info("Received request {}", request.getAttribute("orderID"));
         try{
             BookStore store = checkStore(storeID);
             book.setStoreID(storeID);
@@ -97,7 +97,9 @@ public class BookController {
         {
             orderID = String.valueOf(Math.random() * 10000);
             request.setAttribute("orderID",orderID );
-            logger.info("request id is {}", orderID);
+            logger.info("Request ID: {}", orderID);
+        }else{
+            orderID = request.getHeader("orderID");
         }
         List<EntityModel<Book>> entityList = new ArrayList<>();
         if (!amILeader()) {
@@ -116,7 +118,7 @@ public class BookController {
             }
             logger.info("Batch request successfully executed by {}", leader.getLeader());
         }else{
-            logger.info("leader handling request with orderID {}", request.getAttribute("orderID"));
+            logger.info("Leader handling Request {}", request.getAttribute("orderID"));
             for(String storeId : id) {
                 book.setStoreID(Long.parseLong(storeId));
                 if(!this.map.containsKey(Long.parseLong(storeId))) continue;
@@ -135,7 +137,6 @@ public class BookController {
         return CollectionModel.of(entityList, linkTo(methodOn(BookController.class).oneBookToManyStores(null, null, null)).withSelfRel());
     }
 
-    //Retry only worked when placed here, on the more global method but did not work on the Utilities method
     @RateLimiter(name = "DDoS-stopper")
     @PostMapping("/bookstores/books")
     protected CollectionModel<EntityModel<Book>> multipleToMultiple(@RequestBody BookArray json, HttpServletRequest request) throws Exception {
