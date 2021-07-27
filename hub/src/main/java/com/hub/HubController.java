@@ -145,6 +145,7 @@ public class HubController {
         if(leader == null && !id.equals("null")){
             leader = id;
         }
+        logger.info("Current leader: {}", leader);
         return leader;
     }
 
