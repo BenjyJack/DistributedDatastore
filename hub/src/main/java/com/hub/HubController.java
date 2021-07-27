@@ -43,6 +43,7 @@ public class HubController {
         List<HubEntry> servers = repository.findAll();
         for (HubEntry entry : servers) {
             this.hub.addServer(entry.getId(), entry.getServerAddress());
+            logger.info("{} added to map", entry.getServerAddress());
         }
     }
 
@@ -62,7 +63,7 @@ public class HubController {
                 if(response.body().equals("true")){
                     leader = String.valueOf(id);
                     sendLeader();
-                    logger.info(leader + " is now the leader");
+                    logger.info("{} is now the leader", leader);
                     return leader;
                 }
             }
@@ -91,7 +92,7 @@ public class HubController {
             leader = String.valueOf(serverId);
         }
         sendLeader();
-        logger.info(address + " has been added to the network");
+        logger.info("{} has been added to the network", address);
         return serverId;
     }
 
@@ -99,14 +100,15 @@ public class HubController {
         for(String address : hub.getMap().values())
         {
             HttpRequest request = HttpRequest.newBuilder()
-                        .uri(new URI(address + "/leader"))
-                        .PUT(HttpRequest.BodyPublishers.ofString(leader))
-                        .header("referer", "HUB")
-                        .build();
+                    .uri(new URI(address + "/leader"))
+                    .PUT(HttpRequest.BodyPublishers.ofString(leader))
+                    .header("referer", "HUB")
+                    .build();
             HttpResponse<String> response = HttpClient.newBuilder()
-                        .build()
-                        .send(request, HttpResponse.BodyHandlers.ofString());
+                    .build()
+                    .send(request, HttpResponse.BodyHandlers.ofString());
         }
+        logger.info("Leader sent");
     }
 
     @Scheduled(fixedDelay = 60000)
@@ -116,7 +118,7 @@ public class HubController {
                     .uri(new URI(this.hub.getAddress(Long.parseLong(leader)) + "/ping"))
                     .headers("Content-Type", "application/json;charset=UTF-8")
                     .header("referer", "HUB")
-                    .timeout(Duration.ofMillis(300))
+                    .timeout(Duration.ofMillis(3000))
                     .GET()
                     .build();
             HttpResponse<String> response = null;
@@ -178,6 +180,7 @@ public class HubController {
             HttpClient.newBuilder()
                     .build()
                     .send(request, HttpResponse.BodyHandlers.ofString());
+            logger.info("New server {} sent to {}", serverInfo, this.hub.getAddress(id));
         }
     }
 
@@ -193,7 +196,7 @@ public class HubController {
         entry.setServerAddress(address);
         repository.save(entry);
         addNewServerToAllServers(json);
-        logger.info(id + "'s address has changed to " + address);
+        logger.info("{}'s address has changed to {}", id, address);
     }
 
     @RateLimiter(name = "DDoS-stopper")
@@ -215,6 +218,6 @@ public class HubController {
         if(serverID.equals(Long.parseLong(leader))){
             findAndSendLeader();
         }
-        logger.info(serverID + " has been removed from the network");
+        logger.info("{} has been removed from the network", serverID);
     }
 }
