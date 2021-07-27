@@ -63,15 +63,6 @@ public class BookController {
     @RateLimiter(name = "DDoS-stopper")
     @PostMapping("/bookstores/{storeID}/books")
     protected ResponseEntity<EntityModel<Book>> newBook(@RequestBody Book book, @PathVariable Long storeID, HttpServletRequest request) throws Exception{
-        String orderID = request.getAttribute("orderID").toString();
-        // if(request.getHeader("orderID") == null)
-        // {
-        //     orderID = String.valueOf(UUID.randomUUID());
-        //     request.setAttribute("orderID", orderID);
-        // }else{
-        //     orderID = request.getHeader("orderID");
-        // }
-        // logger.info("Received request {}", orderID);
         try{
             BookStore store = checkStore(storeID);
             book.setStoreID(storeID);
@@ -97,15 +88,6 @@ public class BookController {
     @RateLimiter(name = "DDoS-stopper")
     @PostMapping("/bookstores/book")
     protected CollectionModel<EntityModel<Book>> oneBookToManyStores(@RequestBody Book book, @RequestParam List<String> id, HttpServletRequest request) throws Exception {
-        String orderID = request.getAttribute("orderID").toString();
-        // if(request.getHeader("orderID") == null)
-        // {
-        //     orderID = String.valueOf(UUID.randomUUID());
-        //     request.setAttribute("orderID", orderID);
-        // }else{
-        //     orderID = request.getHeader("orderID");
-        // }
-        // logger.info("Request {} received", orderID);
         List<EntityModel<Book>> entityList = new ArrayList<>();
         if (!amILeader()) {
             String address = this.map.get(this.leader.getLeader());
@@ -146,14 +128,6 @@ public class BookController {
     @PostMapping("/bookstores/books")
     protected CollectionModel<EntityModel<Book>> multipleToMultiple(@RequestBody BookArray json, HttpServletRequest request) throws Exception {
         String orderID = request.getAttribute("orderID").toString();
-        // if(request.getHeader("orderID") == null)
-        // {
-        //     orderID = String.valueOf(UUID.randomUUID());
-        //     request.setAttribute("orderID", orderID);
-        // }else{
-        //     orderID = request.getHeader("orderID");
-        // }
-        // logger.info("Request {} received", orderID);
         if(!amILeader()){
             return multipleToLeader(json, orderID);
         }
@@ -210,7 +184,6 @@ public class BookController {
     @GetMapping("/bookstores/{storeID}/books/{bookId}")
     protected ResponseEntity<EntityModel<Book>> one(@PathVariable Long bookId, @PathVariable Long storeID, HttpServletRequest request) throws Exception{
         String orderID = request.getAttribute("orderID").toString();
-        //logger.info("Request {} received", orderID);
         try{
             checkStore(storeID);
             Book book = checkBook(bookId);
@@ -233,7 +206,6 @@ public class BookController {
     @GetMapping("/bookstores/{storeID}/books")
     protected ResponseEntity<CollectionModel<EntityModel<Book>>> all(@PathVariable Long storeID, @RequestParam(required = false) List<String> id, HttpServletRequest request) throws Exception{
         String orderID = request.getAttribute("orderID").toString();
-        //logger.info("Request {} recevied", orderID);
         List<EntityModel<Book>> booksAll;
         try {
             checkStore(storeID);
@@ -276,7 +248,6 @@ public class BookController {
     @PutMapping("/bookstores/{storeID}/books/{id}")
     protected ResponseEntity<EntityModel<Book>> updateBook(@RequestBody Book newBook, @PathVariable Long id, @PathVariable Long storeID, HttpServletRequest request) throws Exception{
         String orderID = request.getAttribute("orderID").toString();
-        //logger.info("Request {} received", orderID);
         try{
             checkStore(storeID);
             Book updatedBook = repository.findById(id)
@@ -308,7 +279,6 @@ public class BookController {
     @DeleteMapping("/bookstores/{storeID}/books/{id}")
     protected ResponseEntity<EntityModel<Book>> deleteBook(@PathVariable Long id, @PathVariable Long storeID, HttpServletRequest request) throws Exception{
         String orderID = request.getAttribute("orderID").toString();
-        //logger.info("Request {} recevied", orderID);
         try{
             checkStore(storeID);
             checkBook(id);

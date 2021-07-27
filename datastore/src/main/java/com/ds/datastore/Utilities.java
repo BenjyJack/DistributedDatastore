@@ -29,12 +29,11 @@ public class Utilities {
     @Retry(name = "retry")
     public HttpResponse<String> createConnection(String address, JsonObject jso, String serverAddress, Long id, String requestType) throws Exception{
         String orderID;
-        try{
-            ServletRequestAttributes attr = (ServletRequestAttributes) RequestContextHolder.currentRequestAttributes();
-            // Extract the request
-            HttpServletRequest currentReq = attr.getRequest();
-            orderID = currentReq.getAttribute("orderID").toString();
-        }catch(IllegalStateException e){
+        ServletRequestAttributes attr = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if(attr != null){
+             HttpServletRequest currentReq = attr.getRequest();
+             orderID = currentReq.getAttribute("orderID").toString();
+        }else{
             orderID = String.valueOf(UUID.randomUUID());
         }
         Gson gson = new Gson();
