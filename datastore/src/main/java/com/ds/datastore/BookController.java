@@ -65,7 +65,6 @@ public class BookController {
         {
             orderID = String.valueOf(UUID.randomUUID());
             request.setAttribute("orderID", orderID);
-            logger.info("Request ID: {}", orderID);
         }else{
             orderID = request.getHeader("orderID");
         }
@@ -100,10 +99,10 @@ public class BookController {
         {
             orderID = String.valueOf(UUID.randomUUID());
             request.setAttribute("orderID", orderID);
-            logger.info("Request ID: {}", orderID);
         }else{
             orderID = request.getHeader("orderID");
         }
+        logger.info("Request {} received", orderID);
         List<EntityModel<Book>> entityList = new ArrayList<>();
         if (!amILeader()) {
             String address = this.map.get(this.leader.getLeader());
@@ -121,7 +120,7 @@ public class BookController {
             }
             logger.info("Batch request successfully executed by {}", leader.getLeader());
         }else{
-            logger.info("Leader handling Request {}", request.getHeader("orderID"));
+            logger.info("Leader handling request {}", request.getHeader("orderID"));
             for(String storeId : id) {
                 book.setStoreID(Long.parseLong(storeId));
                 if(!this.map.containsKey(Long.parseLong(storeId))) continue;
@@ -151,8 +150,9 @@ public class BookController {
         }else{
             orderID = request.getHeader("orderID");
         }
+        logger.info("Request {} received", orderID);
         if(!amILeader()){
-            return multipleToLeader(json, request);
+            return multipleToLeader(json, orderID);
         }
         List<EntityModel<Book>> entityModelList = new ArrayList<>();
         for (Book book: json.getBooks()) {
@@ -174,15 +174,7 @@ public class BookController {
         return address.substring(0,address.lastIndexOf("/") + 1);
     }
 
-    private CollectionModel<EntityModel<Book>> multipleToLeader(BookArray array, HttpServletRequest request) throws Exception {
-        String orderID;
-        if(request.getHeader("orderID") == null)
-        {
-            orderID = String.valueOf(UUID.randomUUID());
-            request.setAttribute("orderID", orderID);
-        }else{
-            orderID = request.getHeader("orderID");
-        }
+    private CollectionModel<EntityModel<Book>> multipleToLeader(BookArray array, String orderID) throws Exception {
         String address = this.map.get(leader.getLeader());
         address = removeIDNum(address) + "books";
         JsonArray jsonArray = new JsonArray();
@@ -194,7 +186,12 @@ public class BookController {
         JsonObject elementedArray = new JsonObject();
         elementedArray.add("books", jsonArray);
         HttpResponse<String> response = utilities.createConnection(address, elementedArray, null, null, "POST", orderID);
-        if(response.statusCode() != 200) throw new RuntimeException("Could not connect to " + address);
+        logger.info("Request {} forwarded to leader", orderID);
+        if(response.statusCode() != 200){
+            logger.warn("{} status code received", response.statusCode());
+            throw new RuntimeException("Could not connect to " + address);
+        }
+        logger.info("Books sent successfully");
         JsonObject jso = new JsonParser().parse(response.body()).getAsJsonObject();
         JsonArray bookArray = jso.getAsJsonObject("_embedded").getAsJsonArray("bookList");
         ArrayList<EntityModel<Book>> entityModels = new ArrayList<>();
@@ -209,16 +206,21 @@ public class BookController {
     @RateLimiter(name = "DDoS-stopper")
     @GetMapping("/bookstores/{storeID}/books/{bookId}")
     protected ResponseEntity<EntityModel<Book>> one(@PathVariable Long bookId, @PathVariable Long storeID) throws Exception{
+        String orderID = String.valueOf(UUID.randomUUID());
+        logger.info("Request {} received", orderID);
         try{
             checkStore(storeID);
             Book book = checkBook(bookId);
             EntityModel<Book> entityModel = assembler.toModel(book);
+            logger.info("Request {} handled", orderID);
             return ResponseEntity.created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
             .body(entityModel);
         }catch(BookStoreNotFoundException e){
             if (this.map.containsKey(storeID)) {
+                logger.info("Redirecting request {}", orderID);
                 return redirectWithId(bookId, storeID);
             }else{
+                logger.error("Book store not found", e);
                 throw e;
             }
         }
@@ -228,31 +230,33 @@ public class BookController {
     @GetMapping("/bookstores/{storeID}/books")
     protected ResponseEntity<CollectionModel<EntityModel<Book>>> all(@PathVariable Long storeID, @RequestParam(required = false) List<String> id) throws Exception{
         String orderID = String.valueOf(UUID.randomUUID());
+        logger.info("Request {} recevied", orderID);
         List<EntityModel<Book>> booksAll;
         try {
             checkStore(storeID);
             if(id != null) {
-                return getAllSpecific(storeID, id);
+                return getAllSpecific(storeID, id, orderID);
             }
             booksAll = repository.findByStoreID(storeID)
                 .stream()
                 .map(assembler::toModel)
                 .collect(Collectors.toList());
-            logger.info("request {} successfully handled", orderID);
+            logger.info("Request {} successfully handled", orderID);
             return ResponseEntity.ok(CollectionModel.of(booksAll, linkTo(methodOn(BookController.class).all(storeID, null)).withSelfRel()));
         }catch (BookStoreNotFoundException e) {
             if (this.map.containsKey(storeID)) {
                 UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(this.map.get(storeID) + "/books");
                 URI uri = new URI(builder.toUriString());
-                logger.info("redirecting request {}", orderID);
+                logger.info("Redirecting request {}", orderID);
                 return ResponseEntity.status(HttpStatus.PERMANENT_REDIRECT).location(uri).header("orderID", orderID).build();
             }else{
+                logger.warn("Bookstore not found", e);
                 throw e;
             }
         }     
     }
 
-    private ResponseEntity<CollectionModel<EntityModel<Book>>> getAllSpecific(Long storeID, List<String> id) throws Exception {
+    private ResponseEntity<CollectionModel<EntityModel<Book>>> getAllSpecific(Long storeID, List<String> id, String orderID) throws Exception {
         List<EntityModel<Book>> entModelList = new ArrayList<>();
         for(String bookId : id) {
             Long parsedId = Long.parseLong(bookId);
@@ -261,12 +265,15 @@ public class BookController {
             }
             entModelList.add(assembler.toModel(repository.findById(parsedId).get()));
         }
+        logger.info("Request {} successfully handled", orderID);
         return ResponseEntity.ok(CollectionModel.of(entModelList, linkTo(methodOn(BookController.class).all(storeID, null)).withSelfRel()));
     }
 
     @RateLimiter(name = "DDoS-stopper")
     @PutMapping("/bookstores/{storeID}/books/{id}")
     protected ResponseEntity<EntityModel<Book>> updateBook(@RequestBody Book newBook, @PathVariable Long id, @PathVariable Long storeID) throws Exception{
+        String orderID = String.valueOf(UUID.randomUUID());
+        logger.info("Request {} received", orderID);
         try{
             checkStore(storeID);
             Book updatedBook = repository.findById(id)
@@ -277,7 +284,7 @@ public class BookController {
                     if(newBook.getDescription() != null) book.setDescription(newBook.getDescription());
                     if(newBook.getLanguage() != null) book.setLanguage(newBook.getLanguage());
                     if(newBook.getTitle() != null) book.setTitle(newBook.getTitle());
-                    logger.info("Book updated");
+                    logger.info("Book {} updated", id);
                     return repository.save(book);
                 })
                 .orElseThrow(() -> new BookNotFoundException(id));
@@ -285,8 +292,10 @@ public class BookController {
             return ResponseEntity.created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri()).body(entityModel);
         }catch(BookStoreNotFoundException e){
             if (this.map.containsKey(storeID)) {
+                logger.info("Redirecting request {}", orderID);
                 return redirectWithId(id, storeID);
             }else{
+                logger.warn("Bookstore not found", e);
                 throw e;
             }
         }
@@ -295,16 +304,20 @@ public class BookController {
     @RateLimiter(name = "DDoS-stopper")
     @DeleteMapping("/bookstores/{storeID}/books/{id}")
     protected ResponseEntity<EntityModel<Book>> deleteBook(@PathVariable Long id, @PathVariable Long storeID) throws Exception{
+        String orderID = String.valueOf(UUID.randomUUID());
+        logger.info("Request {} recevied", orderID);
         try{
             checkStore(storeID);
             checkBook(id);
             repository.deleteById(id);
-            logger.info("Book permanently terminated");
+            logger.info("Book {} permanently terminated", id);
             return ResponseEntity.noContent().build();
         }catch(BookStoreNotFoundException e){
             if (this.map.containsKey(storeID)) {
+                logger.info("Redirecting request {}", orderID);
                 return redirectWithId(id, storeID);
             }else{
+                logger.warn("Bookstore not found", e);
                 throw e;
             }
         }
