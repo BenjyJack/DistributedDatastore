@@ -7,6 +7,8 @@ import io.github.resilience4j.retry.annotation.Retry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -16,13 +18,19 @@ import java.net.http.HttpRequest.Builder;
 import java.time.Duration;
 import java.util.Optional;
 
+import javax.servlet.http.HttpServletRequest;
+
 
 @Component
 public class Utilities {
     Logger logger = LoggerFactory.getLogger(Utilities.class);
 
     @Retry(name = "retry")
-    public HttpResponse<String> createConnection(String address, JsonObject jso, String serverAddress, Long id, String requestType, String orderID) throws Exception{
+    public HttpResponse<String> createConnection(String address, JsonObject jso, String serverAddress, Long id, String requestType) throws Exception{
+        ServletRequestAttributes attr = (ServletRequestAttributes) RequestContextHolder.currentRequestAttributes();
+        // Extract the request
+        HttpServletRequest currentReq = attr.getRequest();
+        String orderID = currentReq.getAttribute("orderID").toString();
         Gson gson = new Gson();
         String json = gson.toJson(jso);
         Builder builder = HttpRequest.newBuilder()
@@ -56,12 +64,12 @@ public class Utilities {
 
     @Retry(name = "retry")
     @CircuitBreaker(name = "#root.args[0]", fallbackMethod = "fallback")
-    public Optional<HttpResponse<String>> createConnectionCircuitBreaker(String address, JsonObject jso, String serverAddress, Long id, String requestType, String orderID) throws Exception{
-        HttpResponse<String> response = createConnection(address, jso, serverAddress, id, requestType, orderID);
+    public Optional<HttpResponse<String>> createConnectionCircuitBreaker(String address, JsonObject jso, String serverAddress, Long id, String requestType) throws Exception{
+        HttpResponse<String> response = createConnection(address, jso, serverAddress, id, requestType);
         return Optional.ofNullable(response);
     }
 
-    private Optional<HttpResponse<String>> fallback(String address, JsonObject jso, String serverAddress, Long id, String requestType, String orderID, RuntimeException e) {
+    private Optional<HttpResponse<String>> fallback(String address, JsonObject jso, String serverAddress, Long id, String requestType, RuntimeException e) {
         logger.info("Entered fall back");
         return Optional.empty();
     }
