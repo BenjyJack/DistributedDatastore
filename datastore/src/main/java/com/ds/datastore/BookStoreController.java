@@ -92,7 +92,7 @@ public class BookStoreController {
     }
 
     /**
-     * tells the hub the Book stores id and address and allows it to be connected to the network
+     * Helper method which tells the hub the Book stores id and address and allows it to be connected to the network
      * @throws Exception if can not create connection
      */
     private void registerWithHub() throws Exception {
