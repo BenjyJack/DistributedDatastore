@@ -21,6 +21,6 @@ public class RequestListener implements ServletRequestListener{
             requestID = String.valueOf(UUID.randomUUID());
         }
         request.setAttribute("requestID", requestID);
-        logger.info("Call from {}, Request Type: {}, Request {} received", request.getHeader("referer"), request.getMethod(), requestID);
+        logger.info("Call from {}, Request Type: {}, Request {} received", request.getRequestURI(), request.getMethod(), requestID);
     }
 }
