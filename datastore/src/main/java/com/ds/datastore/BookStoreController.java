@@ -141,7 +141,7 @@ public class BookStoreController {
 
     /**
      * @param bookStore to add to the server
-     * @return entitiy model of the Book store sent to the server
+     * @return entity model of the Book store sent to the server
      * @throws Exception if fails to post the server to the hub
      */
     @RateLimiter(name = "DDoS-stopper")
