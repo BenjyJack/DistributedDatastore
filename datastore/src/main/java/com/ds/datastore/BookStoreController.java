@@ -64,7 +64,7 @@ public class BookStoreController {
     /**
      * If restarted a server gets the new and updated map back from the hub
      * and gets the current leader from the hub
-     * Then checks to see if current address is same as the address currently registered with the hub and makes
+     * Then checks to see if current address is same as the address originally registered with the hub and makes
      * the necessary changes
      *  @throws Exception if can not connect to the hub
      */
