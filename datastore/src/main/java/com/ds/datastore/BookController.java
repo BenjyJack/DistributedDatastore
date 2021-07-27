@@ -62,7 +62,7 @@ public class BookController {
 
     @RateLimiter(name = "DDoS-stopper")
     @PostMapping("/bookstores/{storeID}/books")
-    protected ResponseEntity<EntityModel<Book>> newBook(@RequestBody Book book, @PathVariable Long storeID, HttpServletRequest request) throws Exception{
+    protected ResponseEntity<EntityModel<Book>> newBook(@RequestBody Book book, @PathVariable Long storeID) throws Exception{
         try{
             BookStore store = checkStore(storeID);
             book.setStoreID(storeID);

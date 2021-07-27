@@ -40,9 +40,9 @@ public class Utilities {
         String json = gson.toJson(jso);
         Builder builder = HttpRequest.newBuilder()
             .uri(new URI(address))
-            .headers("Content-Type", "application/json;charset=UTF-8", "Content-Type", "application/octet-stream;charset=UTF-8");
+            .headers("Content-Type", "application/json;charset=UTF-8");
         if (requestType.equals("GET")) {
-                builder = builder
+                builder = builder      
                         .setHeader("id", String.valueOf(id))
                         .timeout(Duration.ofSeconds(4))
                         .GET();
