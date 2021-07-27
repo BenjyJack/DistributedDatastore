@@ -111,8 +111,8 @@ public class BookStoreController {
     @RateLimiter(name = "DDoS-stopper")
     @PostMapping("/bookstores")
     protected ResponseEntity<EntityModel<BookStore>> newBookStore(@RequestBody BookStore bookStore) throws Exception {
-        String orderID = String.valueOf(UUID.randomUUID());
-        logger.info("Request {} received", orderID);
+        String requestID = String.valueOf(UUID.randomUUID());
+        logger.info("Request {} received", requestID);
         if (this.id != null) {
             logger.warn("Bookstore already exists on this server with ID {}", this.id);
             return ResponseEntity.status(HttpStatus.ALREADY_REPORTED).build();
@@ -138,12 +138,12 @@ public class BookStoreController {
     @RateLimiter(name = "DDoS-stopper")
     @GetMapping("/bookstores/{storeID}")
     protected ResponseEntity<EntityModel<BookStore>> one(@PathVariable Long storeID) throws Exception {
-        String orderID = String.valueOf(UUID.randomUUID());
-        logger.info("Request {} received", orderID);
+        String requestID = String.valueOf(UUID.randomUUID());
+        logger.info("Request {} received", requestID);
         try{
             BookStore bookStore = storeRepository.findByServerId(storeID).orElseThrow(() -> new BookStoreNotFoundException(storeID));
             EntityModel<BookStore> entityModel = bookStoreModelAssembler.toModel(bookStore);
-            logger.info("Request {} successfully handled", orderID);
+            logger.info("Request {} successfully handled", requestID);
             return ResponseEntity
                     .created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
                     .body(entityModel);
@@ -151,7 +151,7 @@ public class BookStoreController {
             if(this.map.containsKey(storeID)){
                 UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(this.map.get(storeID));
                 URI uri = new URI(builder.toUriString());
-                logger.info("Redirecting request {}", orderID);
+                logger.info("Redirecting request {}", requestID);
                 return ResponseEntity.status(HttpStatus.PERMANENT_REDIRECT).location(uri).build();
             }else{
                 logger.warn("Bookstore not found", e);
@@ -163,8 +163,8 @@ public class BookStoreController {
     @RateLimiter(name = "DDoS-stopper")
     @GetMapping("/bookstores")
     protected CollectionModel<EntityModel<BookStore>> getBookStores(@RequestParam(required = false) List<String> id) throws Exception {
-        String orderID = String.valueOf(UUID.randomUUID());
-        logger.info("Request {} received", orderID);
+        String requestID = String.valueOf(UUID.randomUUID());
+        logger.info("Request {} received", requestID);
         List<EntityModel<BookStore>> entModelList = new ArrayList<>();
         if(id == null) {
             for (Long storeID : this.map.keySet()) {
@@ -188,7 +188,7 @@ public class BookStoreController {
                 }
             }
         }
-        logger.info("Request {} handled", orderID);
+        logger.info("Request {} handled", requestID);
         return CollectionModel.of(entModelList, linkTo(methodOn(BookStoreController.class).getBookStores(null)).withSelfRel());
     }
 
@@ -208,8 +208,8 @@ public class BookStoreController {
     @RateLimiter(name = "DDoS-stopper")
     @GetMapping("/bookstores/books")
     protected CollectionModel<EntityModel<Book>> getAllBooksFromBookStores(@RequestParam (required = false) List<String> id) throws Exception {
-        String orderID = String.valueOf(UUID.randomUUID());
-        logger.info("Request {} received", orderID);
+        String requestID = String.valueOf(UUID.randomUUID());
+        logger.info("Request {} received", requestID);
         if(id == null) {
             List<String> arrayList = new ArrayList<>();
             for(Long storeID : this.map.keySet()) {
@@ -239,22 +239,22 @@ public class BookStoreController {
                 entModelList.add(bookModelAssembler.toModel(book));
             }
         }
-        logger.info("Request {} handled", orderID);
+        logger.info("Request {} handled", requestID);
         return CollectionModel.of(entModelList, linkTo(methodOn(BookStoreController.class).getAllBooksFromBookStores(null)).withSelfRel());
     }
 
     @RateLimiter(name = "DDoS-stopper")
     @PutMapping("/bookstores/{storeID}")
     protected BookStore updateBookStore(@RequestBody BookStore newBookStore, @PathVariable Long storeID) {
-        String orderID = String.valueOf(UUID.randomUUID());
-        logger.info("Request {} received", orderID);
+        String requestID = String.valueOf(UUID.randomUUID());
+        logger.info("Request {} received", requestID);
         return storeRepository.findById(storeID)
                 .map(bookStore -> {
                     if(newBookStore.getName() != null) bookStore.setName(newBookStore.getName());
                     if(newBookStore.getPhone() != null) bookStore.setPhone(newBookStore.getPhone());
                     if(newBookStore.getStreetAddress() != null) bookStore.setStreetAddress(newBookStore.getStreetAddress());
                     logger.info("Bookstore {} successfully updated", storeID);
-                    logger.info("Request {} handled", orderID);
+                    logger.info("Request {} handled", requestID);
                     return storeRepository.save(bookStore);
                 })
                 .orElseThrow(() -> new BookStoreNotFoundException(storeID));
@@ -263,8 +263,8 @@ public class BookStoreController {
     @RateLimiter(name = "DDoS-stopper")
     @DeleteMapping("/bookstores/{storeID}")
     protected ResponseEntity<EntityModel<BookStore>> deleteBookStore(@PathVariable Long storeID) throws Exception{
-        String orderID = String.valueOf(UUID.randomUUID());
-        logger.info("Request {} received", orderID);
+        String requestID = String.valueOf(UUID.randomUUID());
+        logger.info("Request {} received", requestID);
         try{
             storeRepository.findById(storeID).orElseThrow(() -> new BookStoreNotFoundException(storeID));
             storeRepository.deleteById(storeID);
@@ -276,7 +276,7 @@ public class BookStoreController {
                 bookRepository.delete(book);
             }
             logger.info("{} has been permanently deleted", storeID);
-            logger.info("Request {} handled", orderID);
+            logger.info("Request {} handled", requestID);
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
         }catch (BookStoreNotFoundException e){
             if(this.map.containsKey(storeID)){

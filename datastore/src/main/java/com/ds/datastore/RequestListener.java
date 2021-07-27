@@ -16,13 +16,13 @@ public class RequestListener implements ServletRequestListener{
     @Override
     public void requestInitialized(ServletRequestEvent sre){
         HttpServletRequest request = (HttpServletRequest)sre.getServletRequest();
-        String orderID = request.getHeader("orderID");
-        if(orderID == null){
-            orderID = String.valueOf(UUID.randomUUID());
+        String requestID = request.getHeader("requestID");
+        if(requestID == null){
+            requestID = String.valueOf(UUID.randomUUID());
         }
-        request.setAttribute("orderID", orderID);
+        request.setAttribute("requestID", requestID);
         logger.info("Call from {}", request.getHeader("referer"));
         logger.info("Request Type: {}", request.getMethod());
-        logger.info("Request {} received", orderID);
+        logger.info("Request {} received", requestID);
     }
 }

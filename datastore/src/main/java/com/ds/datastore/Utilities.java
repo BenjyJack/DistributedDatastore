@@ -28,13 +28,13 @@ public class Utilities {
 
     @Retry(name = "retry")
     public HttpResponse<String> createConnection(String address, JsonObject jso, String serverAddress, Long id, String requestType) throws Exception{
-        String orderID;
+        String requestID;
         ServletRequestAttributes attr = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if(attr != null){
              HttpServletRequest currentReq = attr.getRequest();
-             orderID = currentReq.getAttribute("orderID").toString();
+             requestID = currentReq.getAttribute("requestID").toString();
         }else{
-            orderID = String.valueOf(UUID.randomUUID());
+            requestID = String.valueOf(UUID.randomUUID());
         }
         Gson gson = new Gson();
         String json = gson.toJson(jso);
@@ -53,13 +53,13 @@ public class Utilities {
         }else if (requestType.equals("DELETE")) {
                 builder = builder.DELETE();
         }
-        HttpRequest request = builder.setHeader("orderID", orderID)
+        HttpRequest request = builder.setHeader("requestID", requestID)
                 .setHeader("referer", serverAddress)
                 .build();
         HttpResponse<String> response = HttpClient.newBuilder()
                 .build()
                 .send(request, HttpResponse.BodyHandlers.ofString());
-        logger.info("Request sent with orderID {}", orderID);
+        logger.info("Request sent with requestID {}", requestID);
         if(requestType.equals("POST") && (response.statusCode() != 201 && response.statusCode() != 200) ){
                 logger.warn("{} received, POST failed", response.statusCode());
                 throw new RuntimeException();
