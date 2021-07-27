@@ -17,6 +17,7 @@ import java.net.http.HttpResponse;
 import java.net.http.HttpRequest.Builder;
 import java.time.Duration;
 import java.util.Optional;
+import java.util.UUID;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -27,10 +28,15 @@ public class Utilities {
 
     @Retry(name = "retry")
     public HttpResponse<String> createConnection(String address, JsonObject jso, String serverAddress, Long id, String requestType) throws Exception{
-        ServletRequestAttributes attr = (ServletRequestAttributes) RequestContextHolder.currentRequestAttributes();
-        // Extract the request
-        HttpServletRequest currentReq = attr.getRequest();
-        String orderID = currentReq.getAttribute("orderID").toString();
+        String orderID;
+        try{
+            ServletRequestAttributes attr = (ServletRequestAttributes) RequestContextHolder.currentRequestAttributes();
+            // Extract the request
+            HttpServletRequest currentReq = attr.getRequest();
+            orderID = currentReq.getAttribute("orderID").toString();
+        }catch(IllegalStateException e){
+            orderID = String.valueOf(UUID.randomUUID());
+        }
         Gson gson = new Gson();
         String json = gson.toJson(jso);
         Builder builder = HttpRequest.newBuilder()
