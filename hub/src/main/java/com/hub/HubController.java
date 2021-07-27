@@ -53,6 +53,7 @@ public class HubController {
                 HttpRequest request = HttpRequest.newBuilder()
                         .uri(new URI(this.hub.getAddress(id) + "/ping"))
                         .headers("Content-Type", "application/json;charset=UTF-8")
+                        .header("referer", "HUB")
                         .GET()
                         .build();
                 HttpResponse<String> response = HttpClient.newBuilder()
@@ -100,6 +101,7 @@ public class HubController {
             HttpRequest request = HttpRequest.newBuilder()
                         .uri(new URI(address + "/leader"))
                         .PUT(HttpRequest.BodyPublishers.ofString(leader))
+                        .header("referer", "HUB")
                         .build();
             HttpResponse<String> response = HttpClient.newBuilder()
                         .build()
@@ -113,6 +115,7 @@ public class HubController {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(new URI(this.hub.getAddress(Long.parseLong(leader)) + "/ping"))
                     .headers("Content-Type", "application/json;charset=UTF-8")
+                    .header("referer", "HUB")
                     .timeout(Duration.ofMillis(300))
                     .GET()
                     .build();
@@ -169,6 +172,7 @@ public class HubController {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(new URI(this.hub.getAddress(id)))
                     .headers("Content-Type", "application/json;charset=UTF-8")
+                    .header("referer", "HUB")
                     .POST(HttpRequest.BodyPublishers.ofString(serverInfo))
                     .build();
             HttpClient.newBuilder()
@@ -201,6 +205,7 @@ public class HubController {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(new URI(this.hub.getAddress(id)))
                     .headers("Content-Type", "application/json;charset=UTF-8")
+                    .header("referer", "HUB")
                     .DELETE()
                     .build();
             HttpClient.newBuilder()

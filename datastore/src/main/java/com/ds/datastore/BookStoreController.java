@@ -74,7 +74,10 @@ public class BookStoreController {
                 registerWithHub();
             }
         }
-        this.leader.setLeader(getLeader());
+        Long currentLeader = getLeader();
+        if(currentLeader != null){
+            this.leader.setLeader(currentLeader);
+        }
         logger.info("Server initialized");
     }
 
@@ -98,6 +101,9 @@ public class BookStoreController {
     private Long getLeader() throws Exception {
         HttpResponse<String> response = utilities.createConnection(hubUrl + "/leader", null, this.url, id, "GET");
         logger.info("Leader found. Mission Accomplished");
+        if(response.body().equals("")){
+            return null;
+        }
         return Long.parseLong(response.body());
     }
 
@@ -120,6 +126,7 @@ public class BookStoreController {
         EntityModel<BookStore> entityModel = postToHub(bookStore);
         logger.info("Current map: " + map.getMap().toString());
         logger.info("Store posted");
+        this.leader.setLeader(getLeader());
         return ResponseEntity
                 .created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
                 .body(entityModel);
