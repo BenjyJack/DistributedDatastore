@@ -8,7 +8,6 @@ import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import com.google.gson.JsonArray;
@@ -51,7 +50,7 @@ public class BookController {
     @Value("${application.baseUrl}")
     private String url;
 
-    public BookController(BookRepository repository, BookModelAssembler assembler, BookStoreRepository storeRepository, ServerMap map, Leader leader, Utilities utilities) {
+    public BookController(BookRepository repository, BookModelAssembler assembler, BookStoreRepository storeRepository, ServerMap map, Leader leader, Utilities utilities){
         this.repository = repository;
         this.assembler = assembler;
         this.storeRepository = storeRepository;
@@ -60,6 +59,14 @@ public class BookController {
         this.utilities = utilities;
     }
 
+    /** 
+     * Post a new book
+     * @param book The book to be posted
+     * @param storeID The ID of the store to which the book is being posted
+     * @return ResponseEntity<EntityModel<Book>>
+     * If the specified bookstore is not the one on this server, a redirect to the proper server is returned
+     * @throws Exception If the specified store does not exist in this network
+     */
     @RateLimiter(name = "DDoS-stopper")
     @PostMapping("/bookstores/{storeID}/books")
     protected ResponseEntity<EntityModel<Book>> newBook(@RequestBody Book book, @PathVariable Long storeID) throws Exception{
@@ -76,23 +83,28 @@ public class BookController {
             if (this.map.containsKey(storeID)) {
                 return redirect(storeID);
             }else{
+                logger.error("The specified bookstore {} does not exist", storeID, e);
                 throw e;
             }
         }     
     }
 
-    private boolean amILeader(){
-        return this.storeRepository.findAll().get(0).getServerId().equals(this.leader.getLeader());
-    }
-
+    /** 
+     * Post the same book to multiple bookstores
+     * @param book The book being posted
+     * @param id A list of store the books are to be posted to
+     * @param request The request from the client, contains useful information like the RequestID
+     * @return CollectionModel<EntityModel<Book>>
+     * @throws Exception if the connection fails
+     */
     @RateLimiter(name = "DDoS-stopper")
     @PostMapping("/bookstores/book")
-    protected CollectionModel<EntityModel<Book>> oneBookToManyStores(@RequestBody Book book, @RequestParam List<String> id, HttpServletRequest request) throws Exception {
+    protected CollectionModel<EntityModel<Book>> oneBookToManyStores(@RequestBody Book book, @RequestParam List<String> id, HttpServletRequest request) throws Exception{
         List<EntityModel<Book>> entityList = new ArrayList<>();
         if (!amILeader()) {
             String address = this.map.get(this.leader.getLeader());
             address = removeIDNum(address) + "book?id=" + String.join(",", id);
-            HttpResponse<String> response = (utilities.createConnection(address, book.makeJson(), this.url, null, "POST"));
+            HttpResponse<String> response = utilities.createConnection(address, book.makeJson(), this.url, null, "POST");
             if(response.statusCode() != 200){
                 logger.warn("Server {} was not reached", leader.getLeader());
                 throw new RuntimeException("Could not connect to " + address);
@@ -124,9 +136,17 @@ public class BookController {
         return CollectionModel.of(entityList, linkTo(methodOn(BookController.class).oneBookToManyStores(null, null, null)).withSelfRel());
     }
 
+    
+    /** 
+     * Post batch of books to specific bookstores
+     * @param json Collection of books being posted
+     * @param request The request from the client, contains useful information like the RequestID
+     * @return CollectionModel<EntityModel<Book>>
+     * @throws Exception if the connection fails
+     */
     @RateLimiter(name = "DDoS-stopper")
     @PostMapping("/bookstores/books")
-    protected CollectionModel<EntityModel<Book>> multipleToMultiple(@RequestBody BookArray json, HttpServletRequest request) throws Exception {
+    protected CollectionModel<EntityModel<Book>> multipleToMultiple(@RequestBody BookArray json, HttpServletRequest request) throws Exception{
         String requestID = request.getAttribute("requestID").toString();
         if(!amILeader()){
             return multipleToLeader(json, requestID);
@@ -147,11 +167,14 @@ public class BookController {
         return CollectionModel.of(entityModelList, linkTo(methodOn(BookController.class)).withSelfRel());
     }
 
-    private String removeIDNum(String address){
-        return address.substring(0,address.lastIndexOf("/") + 1);
-    }
-
-    private CollectionModel<EntityModel<Book>> multipleToLeader(BookArray array, String requestID) throws Exception {
+    /** 
+     * Forward batch request to the leader
+     * @param array Collection of books being posted
+     * @param requestID The RequestID for logging purposes
+     * @return CollectionModel<EntityModel<Book>>
+     * @throws Exception if the connection fails
+     */
+    private CollectionModel<EntityModel<Book>> multipleToLeader(BookArray array, String requestID) throws Exception{
         String address = this.map.get(leader.getLeader());
         address = removeIDNum(address) + "books";
         JsonArray jsonArray = new JsonArray();
@@ -180,6 +203,15 @@ public class BookController {
         return  CollectionModel.of(entityModels, linkTo(methodOn(BookController.class)).withSelfRel());
     }
 
+    /** 
+     * Get one book from the specified boosktore
+     * @param bookId The book to return
+     * @param storeID The store which contains the book
+     * @param request The request from the client, contains useful information like the RequestID
+     * @return ResponseEntity<EntityModel<Book>>
+     * If the specified bookstore is not the one on this server, a redirect to the proper server is returned
+     * @throws Exception if the bookstore can't be found
+     */
     @RateLimiter(name = "DDoS-stopper")
     @GetMapping("/bookstores/{storeID}/books/{bookId}")
     protected ResponseEntity<EntityModel<Book>> one(@PathVariable Long bookId, @PathVariable Long storeID, HttpServletRequest request) throws Exception{
@@ -196,12 +228,21 @@ public class BookController {
                 logger.info("Redirecting request {}", requestID);
                 return redirectWithId(bookId, storeID);
             }else{
-                logger.error("Book store not found", e);
+                logger.error("Bookstore not found", e);
                 throw e;
             }
         }
     }
 
+    /** 
+     * @param storeID The bookstore to get the books from
+     * @param id A list of books to get
+     * If not provided, will assume that all books contained in the specified store are being requested
+     * @param request The request from the client, contains useful information like the RequestID
+     * @return ResponseEntity<CollectionModel<EntityModel<Book>>>
+     * If the specified bookstore is not the one on this server, a redirect to the proper server is returned
+     * @throws Exception if the bookstore can't be found
+     */
     @RateLimiter(name = "DDoS-stopper")
     @GetMapping("/bookstores/{storeID}/books")
     protected ResponseEntity<CollectionModel<EntityModel<Book>>> all(@PathVariable Long storeID, @RequestParam(required = false) List<String> id, HttpServletRequest request) throws Exception{
@@ -231,7 +272,15 @@ public class BookController {
         }     
     }
 
-    private ResponseEntity<CollectionModel<EntityModel<Book>>> getAllSpecific(Long storeID, List<String> id, String requestID) throws Exception {
+    /** 
+     * @param storeID The bookstore to get the books from
+     * @param id A list of books to get
+     * @param requestID The RequestID for logging purposes
+     * @return ResponseEntity<CollectionModel<EntityModel<Book>>>
+     * Returns a list of the specifiec books, if they are present in this bookstore
+     * @throws Exception
+     */
+    private ResponseEntity<CollectionModel<EntityModel<Book>>> getAllSpecific(Long storeID, List<String> id, String requestID) throws Exception{
         List<EntityModel<Book>> entModelList = new ArrayList<>();
         for(String bookId : id) {
             Long parsedId = Long.parseLong(bookId);
@@ -244,6 +293,15 @@ public class BookController {
         return ResponseEntity.ok(CollectionModel.of(entModelList, linkTo(methodOn(BookController.class).all(storeID, null, null)).withSelfRel()));
     }
 
+    /** 
+     * @param newBook The updated book
+     * @param id ID of the book being updated
+     * @param storeID Bookstore which contains the book to be updated
+     * @param request The request from the client, contains useful information like the RequestID
+     * @return ResponseEntity<EntityModel<Book>>
+     * If the specified bookstore is not the one on this server, a redirect to the proper server is returned
+     * @throws Exception if the bookstore can't be found
+     */
     @RateLimiter(name = "DDoS-stopper")
     @PutMapping("/bookstores/{storeID}/books/{id}")
     protected ResponseEntity<EntityModel<Book>> updateBook(@RequestBody Book newBook, @PathVariable Long id, @PathVariable Long storeID, HttpServletRequest request) throws Exception{
@@ -275,6 +333,14 @@ public class BookController {
         }
     }
 
+    /** 
+     * @param id ID of the book being deleted
+     * @param storeID Bookstore which contains the intended book
+     * @param request The request from the client, contains useful information like the RequestID
+     * @return ResponseEntity<EntityModel<Book>>
+     * If the specified bookstore is not the one on this server, a redirect to the proper server is returned
+     * @throws Exception if the bookstore can't be found
+     */
     @RateLimiter(name = "DDoS-stopper")
     @DeleteMapping("/bookstores/{storeID}/books/{id}")
     protected ResponseEntity<EntityModel<Book>> deleteBook(@PathVariable Long id, @PathVariable Long storeID, HttpServletRequest request) throws Exception{
@@ -296,20 +362,60 @@ public class BookController {
         }
     }
 
+    /** 
+     * Checks if this server is currently the leader
+     * @return boolean
+     */
+    private boolean amILeader(){
+        return this.storeRepository.findAll().get(0).getServerId().equals(this.leader.getLeader());
+    }
+
+    /** 
+     * Check if the bookstore on this server is the one being requested
+     * @param storeID
+     * @return BookStore
+     */
     private BookStore checkStore(Long storeID){
         return storeRepository.findById(storeID).orElseThrow(() -> new BookStoreNotFoundException(storeID));
     }
 
-    private Book checkBook(Long id) {
+    /** 
+     * Check if the repository contains the specified book
+     * @param id
+     * @return Book
+     */
+    private Book checkBook(Long id){
         return repository.findById(id).orElseThrow(() -> new BookNotFoundException(id));
     }
 
+    /** 
+     * Remove the id from the end of the address 
+     * @param address
+     * @return String
+     */
+    private String removeIDNum(String address){
+        return address.substring(0,address.lastIndexOf("/") + 1);
+    }
+
+    /** 
+     * Create a redirect to the specified server
+     * @param storeId
+     * @return ResponseEntity<EntityModel<Book>>
+     * @throws Exception
+     */
     private ResponseEntity<EntityModel<Book>> redirect(Long storeId) throws Exception{
         UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(this.map.get(storeId) + "/books");
         URI uri = new URI(builder.toUriString());
         return ResponseEntity.status(HttpStatus.PERMANENT_REDIRECT).location(uri).build();
     }
 
+    /** 
+     * Create a redirect to the specified server, with the desired storeID appended to the address
+     * @param bookId
+     * @param storeId
+     * @return ResponseEntity<EntityModel<Book>>
+     * @throws Exception
+     */
     private ResponseEntity<EntityModel<Book>> redirectWithId(Long bookId, Long storeId) throws Exception{
         UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(this.map.get(storeId) + "/books/" + bookId);
         URI uri = new URI(builder.toUriString());
