@@ -18,6 +18,7 @@ import com.google.gson.JsonParser;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.IanaLinkRelations;
@@ -47,6 +48,8 @@ public class BookController {
     private Leader leader;
     Logger logger = LoggerFactory.getLogger(BookController.class);
     private Utilities utilities;
+    @Value("${application.baseUrl}")
+    private String url;
 
     public BookController(BookRepository repository, BookModelAssembler assembler, BookStoreRepository storeRepository, ServerMap map, Leader leader, Utilities utilities) {
         this.repository = repository;
@@ -107,7 +110,7 @@ public class BookController {
         if (!amILeader()) {
             String address = this.map.get(this.leader.getLeader());
             address = removeIDNum(address) + "book?id=" + String.join(",", id);
-            HttpResponse<String> response = (utilities.createConnection(address, book.makeJson(), null, null, "POST", orderID));
+            HttpResponse<String> response = (utilities.createConnection(address, book.makeJson(), this.url, null, "POST", orderID));
             if(response.statusCode() != 200){
                 logger.warn("Server {} was not reached", leader.getLeader());
                 throw new RuntimeException("Could not connect to " + address);
@@ -125,7 +128,7 @@ public class BookController {
                 book.setStoreID(Long.parseLong(storeId));
                 if(!this.map.containsKey(Long.parseLong(storeId))) continue;
                 String address = this.map.get(Long.parseLong(storeId)) + "/books";
-                Optional<HttpResponse<String>> optional = utilities.createConnectionCircuitBreaker(address, book.makeJson(), null, null, "POST", orderID);
+                Optional<HttpResponse<String>> optional = utilities.createConnectionCircuitBreaker(address, book.makeJson(), this.url, null, "POST", orderID);
                 if(optional.isEmpty()){
                     continue;
                 }
@@ -161,7 +164,7 @@ public class BookController {
             }
             JsonObject jso = book.makeJson();
             jso.addProperty("storeID", book.getStoreID());
-            Optional<HttpResponse<String>> optional = utilities.createConnectionCircuitBreaker(this.map.get(book.getStoreID()) + "/books", jso, null, null, "POST", orderID);
+            Optional<HttpResponse<String>> optional = utilities.createConnectionCircuitBreaker(this.map.get(book.getStoreID()) + "/books", jso, this.url, null, "POST", orderID);
             if(!optional.isEmpty()) {
                 entityModelList.add(assembler.toModel(book));
             }
@@ -185,7 +188,7 @@ public class BookController {
         }
         JsonObject elementedArray = new JsonObject();
         elementedArray.add("books", jsonArray);
-        HttpResponse<String> response = utilities.createConnection(address, elementedArray, null, null, "POST", orderID);
+        HttpResponse<String> response = utilities.createConnection(address, elementedArray, this.url, null, "POST", orderID);
         logger.info("Request {} forwarded to leader", orderID);
         if(response.statusCode() != 200){
             logger.warn("{} status code received", response.statusCode());

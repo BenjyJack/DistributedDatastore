@@ -30,6 +30,7 @@ public class Utilities {
             .headers("Content-Type", "application/json;charset=UTF-8", "Content-Type", "application/octet-stream;charset=UTF-8");
         if (requestType.equals("GET")) {
                 builder = builder
+                        .setHeader("id", String.valueOf(id))
                         .timeout(Duration.ofSeconds(4))
                         .GET();
         }else if(requestType.equals("POST")){
@@ -41,7 +42,6 @@ public class Utilities {
         }
         HttpRequest request = builder.setHeader("orderID", orderID)
                 .setHeader("referer", serverAddress)
-                .setHeader("id", String.valueOf(id))
                 .build();
         HttpResponse<String> response = HttpClient.newBuilder()
                 .build()
