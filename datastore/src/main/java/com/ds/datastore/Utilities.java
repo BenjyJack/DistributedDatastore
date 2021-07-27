@@ -21,37 +21,47 @@ import java.util.UUID;
 
 import javax.servlet.http.HttpServletRequest;
 
-
 @Component
 public class Utilities {
-    Logger logger = LoggerFactory.getLogger(Utilities.class);
 
+    private Logger logger = LoggerFactory.getLogger(Utilities.class);
+
+    /**
+     * Creates connection from current server to specified server.
+     * @param address the address of the specified server
+     * @param jso the body of the request
+     * @param serverAddress the address of the current server
+     * @param id the server ID of the current server
+     * @param requestType the specified request type (POST, GET, PUT, DELETE)
+     * @return response from the specified server
+     * @throws Exception if there is an error
+     */
     @Retry(name = "retry")
-    public HttpResponse<String> createConnection(String address, JsonObject jso, String serverAddress, Long id, String requestType) throws Exception{
+    public HttpResponse<String> createConnection(String address, JsonObject jso, String serverAddress, Long id, String requestType) throws Exception {
         String requestID;
         ServletRequestAttributes attr = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if(attr != null){
-             HttpServletRequest currentReq = attr.getRequest();
-             requestID = currentReq.getAttribute("requestID").toString();
+            HttpServletRequest currentReq = attr.getRequest();
+            requestID = currentReq.getAttribute("requestID").toString();
         }else{
             requestID = String.valueOf(UUID.randomUUID());
         }
         Gson gson = new Gson();
         String json = gson.toJson(jso);
         Builder builder = HttpRequest.newBuilder()
-            .uri(new URI(address))
-            .headers("Content-Type", "application/json;charset=UTF-8");
-        if (requestType.equals("GET")) {
-                builder = builder      
+                .uri(new URI(address))
+                .headers("Content-Type", "application/json;charset=UTF-8");
+        if(requestType.equals("GET")) {
+                builder = builder
                         .setHeader("id", String.valueOf(id))
                         .timeout(Duration.ofSeconds(4))
                         .GET();
         }else if(requestType.equals("POST")){
-                builder = builder.POST(HttpRequest.BodyPublishers.ofString(json));
+            builder = builder.POST(HttpRequest.BodyPublishers.ofString(json));
         }else if(requestType.equals("PUT")){
-                builder = builder.PUT(HttpRequest.BodyPublishers.ofString(json));
+            builder = builder.PUT(HttpRequest.BodyPublishers.ofString(json));
         }else if (requestType.equals("DELETE")) {
-                builder = builder.DELETE();
+            builder = builder.DELETE();
         }
         HttpRequest request = builder.setHeader("requestID", requestID)
                 .setHeader("referer", serverAddress)
@@ -61,19 +71,28 @@ public class Utilities {
                 .send(request, HttpResponse.BodyHandlers.ofString());
         logger.info("Request sent with requestID {}", requestID);
         if(requestType.equals("POST") && (response.statusCode() != 201 && response.statusCode() != 200) ){
-                logger.warn("{} received, POST failed", response.statusCode());
-                throw new RuntimeException();
+            logger.warn("{} received, POST failed", response.statusCode());
+            throw new RuntimeException();
         }
         return response;
     }
 
+    /**
+     * @see #createConnection(String, JsonObject, String, Long, String)
+     * @return Optional containing response
+     */
     @Retry(name = "retry")
     @CircuitBreaker(name = "#root.args[0]", fallbackMethod = "fallback")
-    public Optional<HttpResponse<String>> createConnectionCircuitBreaker(String address, JsonObject jso, String serverAddress, Long id, String requestType) throws Exception{
+    public Optional<HttpResponse<String>> createConnectionCircuitBreaker(String address, JsonObject jso, String serverAddress, Long id, String requestType) throws Exception {
         HttpResponse<String> response = createConnection(address, jso, serverAddress, id, requestType);
         return Optional.ofNullable(response);
     }
 
+    /**
+     * In cases where the CircuitBreaker fails, this method is called.
+     * @see #createConnectionCircuitBreaker(String, JsonObject, String, Long, String)
+     * @return empty Optional
+     */
     private Optional<HttpResponse<String>> fallback(String address, JsonObject jso, String serverAddress, Long id, String requestType, RuntimeException e) {
         logger.info("Entered fall back");
         return Optional.empty();
