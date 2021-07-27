@@ -105,7 +105,7 @@ public class BookController {
             }
             logger.info("Batch request successfully executed by {}", leader.getLeader());
         }else{
-            logger.info("Leader handling request {}", request.getHeader("requestID"));
+            logger.info("Leader handling request {}", request.getAttribute("requestID"));
             for(String storeId : id) {
                 book.setStoreID(Long.parseLong(storeId));
                 if(!this.map.containsKey(Long.parseLong(storeId))) continue;
