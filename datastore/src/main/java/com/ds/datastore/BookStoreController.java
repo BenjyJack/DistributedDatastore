@@ -117,7 +117,7 @@ public class BookStoreController {
     }
 
     /**
-     * @return the id of the leader for batch requests
+     * @return the id of the leader i.e the server to handle batch requests
      * @throws Exception if can not connect to the hub to get the leader
      */
     private Long getLeader() throws Exception {
