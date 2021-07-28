@@ -131,7 +131,9 @@ public class BookController {
                 JsonObject jo = parser.parse(response.body()).getAsJsonObject();
                 entityList.add(assembler.toModel(new Book(jo)));
             }
-            logger.info("Batch request successfully handled");
+            if(!entityList.isEmpty()){
+                logger.info("Batch request successfully handled");
+            }
         }
         return CollectionModel.of(entityList, linkTo(methodOn(BookController.class).oneBookToManyStores(null, null, null)).withSelfRel());
     }
