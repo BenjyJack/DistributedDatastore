@@ -10,6 +10,7 @@ import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.UUID;
 
 import javax.annotation.PostConstruct;
 
@@ -28,6 +29,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
+/**
+ * Controller for BookStores allows CRUD Operations for a Book Store in the network
+ */
 @RestController
 public class BookStoreController {
 
@@ -57,12 +61,19 @@ public class BookStoreController {
         this.utilities = utilities;
     }
 
+    /**
+     * If restarted a server gets the new and updated map back from the hub
+     * and gets the current leader from the hub
+     * Then checks to see if current address is same as the address originally registered with the hub and makes
+     * the necessary changes
+     *  @throws Exception if can not connect to the hub
+     */
     @PostConstruct
     public void restartChangedOrNew() throws Exception {
         try {
-                this.map.setMap(reclaimMap());
+            this.map.setMap(reclaimMap());
         }catch (Exception e) {
-                logger.error("unable to get map from HUB", e);
+            logger.error("Unable to get map from HUB", e);
         }
         List<BookStore> bookStoreList = storeRepository.findAll();
         if(!bookStoreList.isEmpty()) {
@@ -73,10 +84,17 @@ public class BookStoreController {
                 registerWithHub();
             }
         }
-        this.leader.setLeader(getLeader());
-        logger.info("Server initialized B-)");
+        Long currentLeader = getLeader();
+        if(currentLeader != null){
+            this.leader.setLeader(currentLeader);
+        }
+        logger.info("Server initialized");
     }
 
+    /**
+     * Helper method which tells the hub the Book stores id and address and allows it to be connected to the network
+     * @throws Exception if can not create connection
+     */
     private void registerWithHub() throws Exception {
         JsonObject json = new JsonObject();
         json.addProperty("id", this.id);
@@ -85,6 +103,10 @@ public class BookStoreController {
         logger.info("Server {} connected to network at {}", this.id, this.url);
     }
 
+    /**
+     * @return The map of server addresses and their id's from the hub
+     * @throws Exception if can not connect to the hub
+     */
     private HashMap<Long, String> reclaimMap() throws Exception {
         HttpResponse<String> response = utilities.createConnection(hubUrl, null, this.url, id, "GET");
         String json = response.body();
@@ -94,12 +116,22 @@ public class BookStoreController {
         return gson.fromJson(json, type);
     }
 
+    /**
+     * @return the id of the leader i.e the server to handle batch requests
+     * @throws Exception if can not connect to the hub to get the leader
+     */
     private Long getLeader() throws Exception {
         HttpResponse<String> response = utilities.createConnection(hubUrl + "/leader", null, this.url, id, "GET");
         logger.info("Leader found. Mission Accomplished");
+        if(response.body().equals("")){
+            return null;
+        }
         return Long.parseLong(response.body());
     }
 
+    /**
+     * sets the leader  method would be called by the hub
+     */
     @RateLimiter(name = "DDoS-stopper")
     @PutMapping("/bookstores/{storeID}/leader")
     protected void setLeader(@RequestBody Long leader)
@@ -107,20 +139,33 @@ public class BookStoreController {
         this.leader.setLeader(leader);
     }
 
+    /**
+     * @param bookStore to add to the server
+     * @return entity model of the Book store sent to the server
+     * @throws Exception if fails to post the server to the hub
+     */
     @RateLimiter(name = "DDoS-stopper")
     @PostMapping("/bookstores")
     protected ResponseEntity<EntityModel<BookStore>> newBookStore(@RequestBody BookStore bookStore) throws Exception {
+        String requestID = String.valueOf(UUID.randomUUID());
+        logger.info("Request {} received", requestID);
         if (this.id != null) {
+            logger.warn("Bookstore already exists on this server with ID {}", this.id);
             return ResponseEntity.status(HttpStatus.ALREADY_REPORTED).build();
         }
         EntityModel<BookStore> entityModel = postToHub(bookStore);
-        System.out.println(map.getMap().toString());
-        logger.info("Store posted.");
+        logger.info("Current map: " + map.getMap().toString());
+        logger.info("Store posted");
+        this.leader.setLeader(getLeader());
         return ResponseEntity
                 .created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
                 .body(entityModel);
     }
 
+    /**
+     * Method for hub to call when new server was added to the network
+     * @param json with an id and address of a new server to be added to the map of servers in the network
+     */
     @RateLimiter(name = "DDoS-stopper")
     @PostMapping("/bookstores/{id}")
     protected void addServer(@RequestBody String json, @PathVariable String id) {
@@ -128,15 +173,24 @@ public class BookStoreController {
         Long givenID = jso.get("id").getAsLong();
         String address = jso.get("address").getAsString();
         this.map.put(givenID, address);
-        logger.info(givenID + " has joined the network");
+        logger.info("{} has joined the network", givenID);
     }
 
+    /**
+     * Method to get one Book store from the server
+     * @param storeID of the Book store to get
+     * @return an entity model of the Book store
+     * @throws Exception if no Book store with that ID found
+     */
     @RateLimiter(name = "DDoS-stopper")
     @GetMapping("/bookstores/{storeID}")
     protected ResponseEntity<EntityModel<BookStore>> one(@PathVariable Long storeID) throws Exception {
+        String requestID = String.valueOf(UUID.randomUUID());
+        logger.info("Request {} received", requestID);
         try{
             BookStore bookStore = storeRepository.findByServerId(storeID).orElseThrow(() -> new BookStoreNotFoundException(storeID));
             EntityModel<BookStore> entityModel = bookStoreModelAssembler.toModel(bookStore);
+            logger.info("Request {} successfully handled", requestID);
             return ResponseEntity
                     .created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
                     .body(entityModel);
@@ -144,16 +198,25 @@ public class BookStoreController {
             if(this.map.containsKey(storeID)){
                 UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(this.map.get(storeID));
                 URI uri = new URI(builder.toUriString());
+                logger.info("Redirecting request {}", requestID);
                 return ResponseEntity.status(HttpStatus.PERMANENT_REDIRECT).location(uri).build();
             }else{
+                logger.warn("Bookstore not found", e);
                 throw e;
             }
         }
     }
 
+    /**
+     * @param id of Book stores to get
+     * @return entity model of Book stores with the given IDs
+     * @throws Exception if can not find server with that ID
+     */
     @RateLimiter(name = "DDoS-stopper")
     @GetMapping("/bookstores")
     protected CollectionModel<EntityModel<BookStore>> getBookStores(@RequestParam(required = false) List<String> id) throws Exception {
+        String requestID = String.valueOf(UUID.randomUUID());
+        logger.info("Request {} received", requestID);
         List<EntityModel<BookStore>> entModelList = new ArrayList<>();
         if(id == null) {
             for (Long storeID : this.map.keySet()) {
@@ -177,9 +240,15 @@ public class BookStoreController {
                 }
             }
         }
+        logger.info("Request {} handled", requestID);
         return CollectionModel.of(entModelList, linkTo(methodOn(BookStoreController.class).getBookStores(null)).withSelfRel());
     }
 
+    /**
+     * @param address of Book store to get
+     * @return entity model of Book store
+     * @throws Exception if can not connect
+     */
     private EntityModel<BookStore> getAndParseBookStore(String address) throws Exception{
         HttpResponse<String> response = utilities.createConnection(address, null, this.url, id, "GET");
         JsonParser parser = new JsonParser();
@@ -193,9 +262,17 @@ public class BookStoreController {
         return bookStoreModelAssembler.toModel(store);
     }
 
+    /**
+     * Gets all the books from specific Book store's
+     * @param id of Book store's to get all books from
+     * @return entity model of books
+     * @throws Exception if can not connect to a Book store with a given ID
+     */
     @RateLimiter(name = "DDoS-stopper")
     @GetMapping("/bookstores/books")
     protected CollectionModel<EntityModel<Book>> getAllBooksFromBookStores(@RequestParam (required = false) List<String> id) throws Exception {
+        String requestID = String.valueOf(UUID.randomUUID());
+        logger.info("Request {} received", requestID);
         if(id == null) {
             List<String> arrayList = new ArrayList<>();
             for(Long storeID : this.map.keySet()) {
@@ -225,47 +302,73 @@ public class BookStoreController {
                 entModelList.add(bookModelAssembler.toModel(book));
             }
         }
+        logger.info("Request {} handled", requestID);
         return CollectionModel.of(entModelList, linkTo(methodOn(BookStoreController.class).getAllBooksFromBookStores(null)).withSelfRel());
     }
 
+    /**
+     * Method to update information of a Book store
+     * @param newBookStore information to change on the old Book store
+     * @param storeID of store to change
+     * @return entity model of updated Book store
+     */
     @RateLimiter(name = "DDoS-stopper")
     @PutMapping("/bookstores/{storeID}")
     protected BookStore updateBookStore(@RequestBody BookStore newBookStore, @PathVariable Long storeID) {
+        String requestID = String.valueOf(UUID.randomUUID());
+        logger.info("Request {} received", requestID);
         return storeRepository.findById(storeID)
                 .map(bookStore -> {
                     if(newBookStore.getName() != null) bookStore.setName(newBookStore.getName());
                     if(newBookStore.getPhone() != null) bookStore.setPhone(newBookStore.getPhone());
                     if(newBookStore.getStreetAddress() != null) bookStore.setStreetAddress(newBookStore.getStreetAddress());
                     logger.info("Bookstore {} successfully updated", storeID);
+                    logger.info("Request {} handled", requestID);
                     return storeRepository.save(bookStore);
                 })
                 .orElseThrow(() -> new BookStoreNotFoundException(storeID));
     }
 
+    /**
+     * Delete a Book store
+     * This Method will delete the Book store from its host server
+     * as well as remove it from the network and delete any books that were in it
+     * @param storeID of Book store to delete
+     * @return 204 no content if successful
+     * @throws Exception if can not find Book store with that ID
+     */
     @RateLimiter(name = "DDoS-stopper")
     @DeleteMapping("/bookstores/{storeID}")
     protected ResponseEntity<EntityModel<BookStore>> deleteBookStore(@PathVariable Long storeID) throws Exception{
+        String requestID = String.valueOf(UUID.randomUUID());
+        logger.info("Request {} received", requestID);
         try{
             storeRepository.findById(storeID).orElseThrow(() -> new BookStoreNotFoundException(storeID));
             storeRepository.deleteById(storeID);
             this.map.remove(storeID);
+            this.id = null;
             utilities.createConnection(hubUrl + "/" + storeID, null, this.url, this.id, "DELETE");
             List<Book> books = bookRepository.findByStoreID(storeID);
             for (Book book : books) {
                 bookRepository.delete(book);
             }
-            logger.info(storeID + " has been permanently deleted");
+            logger.info("{} has been permanently deleted", storeID);
+            logger.info("Request {} handled", requestID);
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
         }catch (BookStoreNotFoundException e){
             if(this.map.containsKey(storeID)){
                 logger.info("Illegal Attempt");
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }else{
+                logger.warn("Bookstore not found", e);
                 throw e;
             }
         }
     }
 
+    /**
+     * @param json object with id of store to delete from the map of servers
+     */
     @RateLimiter(name = "DDoS-stopper")
     @DeleteMapping("/bookstores/map")
     protected void deleteFromMap(@RequestBody String json){
@@ -275,12 +378,22 @@ public class BookStoreController {
         logger.info("{} has been deleted", id);
     }
 
+    /**
+     * Method for server health check
+     * @return True
+     */
     @RateLimiter(name = "DDoS-stopper")
     @GetMapping("/bookstores/{storeID}/ping")
     protected boolean ping() {
         return true;
     }
 
+    /**
+     * Helper method to post a Book store and its information to the hub
+     * @param bookStore to be added to hub
+     * @return entity of Book store to be added
+     * @throws Exception if can not connect to HUB
+     */
     private EntityModel<BookStore> postToHub(BookStore bookStore) throws Exception {
         JsonObject jso = new JsonObject();
         jso.addProperty("address", this.url + "/bookstores/");
