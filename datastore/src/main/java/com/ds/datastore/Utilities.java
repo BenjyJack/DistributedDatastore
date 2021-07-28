@@ -2,6 +2,7 @@ package com.ds.datastore;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
 import org.slf4j.Logger;
@@ -38,6 +39,7 @@ public class Utilities {
      */
     @Retry(name = "retry")
     public HttpResponse<String> createConnection(String address, JsonObject jso, String serverAddress, Long id, String requestType) throws Exception {
+        logger.info("Started connection");
         String requestID;
         ServletRequestAttributes attr = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if(attr != null){
@@ -70,8 +72,8 @@ public class Utilities {
                 .build()
                 .send(request, HttpResponse.BodyHandlers.ofString());
         logger.info("Request sent with requestID {}", requestID);
-        if(requestType.equals("POST") && (response.statusCode() != 201 && response.statusCode() != 200) ){
-            logger.warn("{} received, POST failed", response.statusCode());
+        if(response.statusCode() > 299){
+            logger.warn("{} received, {} failed", response.statusCode(), requestType);
             throw new RuntimeException();
         }
         return response;
@@ -93,7 +95,7 @@ public class Utilities {
      * @see #createConnectionCircuitBreaker(String, JsonObject, String, Long, String)
      * @return empty Optional
      */
-    private Optional<HttpResponse<String>> fallback(String address, JsonObject jso, String serverAddress, Long id, String requestType, RuntimeException e) {
+    private Optional<HttpResponse<String>> fallback(String address, JsonObject jso, String serverAddress, Long id, String requestType, CallNotPermittedException e) {
         logger.info("Entered fall back");
         return Optional.empty();
     }
