@@ -321,9 +321,9 @@ public class BookStoreController {
         logger.info("Request {} received", requestID);
         return storeRepository.findById(storeID)
                 .map(bookStore -> {
-                    if(newBookStore.getName() != null) bookStore.setName(newBookStore.getName());
-                    if(newBookStore.getPhone() != null) bookStore.setPhone(newBookStore.getPhone());
-                    if(newBookStore.getStreetAddress() != null) bookStore.setStreetAddress(newBookStore.getStreetAddress());
+                    if(!newBookStore.getName().equals("")) bookStore.setName(newBookStore.getName());
+                    if(!newBookStore.getPhone().equals("")) bookStore.setPhone(newBookStore.getPhone());
+                    if(!newBookStore.getStreetAddress().equals("")) bookStore.setStreetAddress(newBookStore.getStreetAddress());
                     logger.info("Bookstore {} successfully updated", storeID);
                     logger.info("Request {} handled", requestID);
                     return storeRepository.save(bookStore);

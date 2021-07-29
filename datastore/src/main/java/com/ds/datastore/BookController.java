@@ -368,7 +368,10 @@ public class BookController {
      * Checks if this server is currently the leader
      * @return boolean
      */
-    private boolean amILeader(){
+    private boolean amILeader() {
+        if(this.storeRepository.findAll().isEmpty()) {
+            return false;
+        }
         return this.storeRepository.findAll().get(0).getServerId().equals(this.leader.getLeader());
     }
 
