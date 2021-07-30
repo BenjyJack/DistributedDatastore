@@ -162,7 +162,10 @@ public class BookController {
             jso.addProperty("storeID", book.getStoreID());
             Optional<HttpResponse<String>> optional = utilities.createConnectionCircuitBreaker(this.map.get(book.getStoreID()) + "/books", jso, this.url, null, "POST");
             if(!optional.isEmpty()) {
-                entityModelList.add(assembler.toModel(book));
+                HttpResponse<String> response = optional.get();
+                JsonParser parser = new JsonParser();
+                JsonObject jo = parser.parse(response.body()).getAsJsonObject();
+                entityModelList.add(assembler.toModel(new Book(jo)));
             }
         }
         logger.info("Batch of multiple to multiple completed");
