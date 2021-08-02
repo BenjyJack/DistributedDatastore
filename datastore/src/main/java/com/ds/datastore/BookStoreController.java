@@ -291,7 +291,7 @@ public class BookStoreController {
                 continue;
             }
             HttpResponse<String> response = utilities.createConnection(address, null, this.url, this.id, "GET");
-            if(response.statusCode() != 200) {
+            if(response.statusCode() > 299) {
                 logger.warn("Server {} was not reached", parsedId);
                 continue;
             }
