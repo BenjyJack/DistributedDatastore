@@ -1,6 +1,8 @@
 package com.hub;
 
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
+import io.github.resilience4j.retry.annotation.Retry;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -120,16 +122,21 @@ public class HubController {
      */
     private void sendLeader() throws Exception {
         for(String address : hub.getMap().values()){
-            HttpRequest request = HttpRequest.newBuilder()
+            retrySend(address);
+        }
+        logger.info("Leader sent");
+    }
+
+    @Retry(name = "retry")
+    private void retrySend(String address) throws Exception{
+        HttpRequest request = HttpRequest.newBuilder()
                     .uri(new URI(address + "/leader"))
                     .PUT(HttpRequest.BodyPublishers.ofString(leader))
                     .header("referer", "HUB")
                     .build();
-            HttpResponse<String> response = HttpClient.newBuilder()
+        HttpResponse<String> response = HttpClient.newBuilder()
                     .build()
                     .send(request, HttpResponse.BodyHandlers.ofString());
-        }
-        logger.info("Leader sent");
     }
 
     /**

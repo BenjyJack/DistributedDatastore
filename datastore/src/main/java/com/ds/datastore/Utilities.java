@@ -48,6 +48,7 @@ public class Utilities {
         }else{
             requestID = String.valueOf(UUID.randomUUID());
         }
+        logger.info("Handling Request {}", requestID);
         Gson gson = new Gson();
         String json = gson.toJson(jso);
         Builder builder = HttpRequest.newBuilder()

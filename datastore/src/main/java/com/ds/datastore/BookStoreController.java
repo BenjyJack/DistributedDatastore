@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.UUID;
 
 import javax.annotation.PostConstruct;
+import javax.servlet.http.HttpServletRequest;
 
 import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
@@ -149,8 +150,6 @@ public class BookStoreController {
     @RateLimiter(name = "DDoS-stopper")
     @PostMapping("/bookstores")
     protected ResponseEntity<EntityModel<BookStore>> newBookStore(@RequestBody BookStore bookStore) throws Exception {
-        String requestID = String.valueOf(UUID.randomUUID());
-        logger.info("Request {} received", requestID);
         if (this.id != null) {
             logger.warn("Bookstore already exists on this server with ID {}", this.id);
             return ResponseEntity.status(HttpStatus.ALREADY_REPORTED).build();
@@ -217,8 +216,6 @@ public class BookStoreController {
     @RateLimiter(name = "DDoS-stopper")
     @GetMapping("/bookstores")
     protected CollectionModel<EntityModel<BookStore>> getBookStores(@RequestParam(required = false) List<String> id) throws Exception {
-        String requestID = String.valueOf(UUID.randomUUID());
-        logger.info("Request {} received", requestID);
         List<EntityModel<BookStore>> entModelList = new ArrayList<>();
         if(id == null) {
             for (Long storeID : this.map.keySet()) {
@@ -242,7 +239,6 @@ public class BookStoreController {
                 }
             }
         }
-        logger.info("Request {} handled", requestID);
         return CollectionModel.of(entModelList, linkTo(methodOn(BookStoreController.class).getBookStores(null)).withSelfRel());
     }
 
@@ -253,6 +249,8 @@ public class BookStoreController {
      */
     private EntityModel<BookStore> getAndParseBookStore(String address) throws Exception{
         HttpResponse<String> response = utilities.createConnection(address, null, this.url, id, "GET");
+        String requestID = response.request().headers().firstValue("requestID").get();
+        logger.info("Request {} handled", requestID);
         JsonParser parser = new JsonParser();
         JsonObject jso = parser.parse(response.body()).getAsJsonObject();
         BookStore store = new BookStore();
@@ -272,9 +270,8 @@ public class BookStoreController {
      */
     @RateLimiter(name = "DDoS-stopper")
     @GetMapping("/bookstores/books")
-    protected CollectionModel<EntityModel<Book>> getAllBooksFromBookStores(@RequestParam (required = false) List<String> id) throws Exception {
-        String requestID = String.valueOf(UUID.randomUUID());
-        logger.info("Request {} received", requestID);
+    protected CollectionModel<EntityModel<Book>> getAllBooksFromBookStores(@RequestParam (required = false) List<String> id, HttpServletRequest request) throws Exception {
+        String requestID = request.getAttribute("requestID").toString();
         if(id == null) {
             List<String> arrayList = new ArrayList<>();
             for(Long storeID : this.map.keySet()) {
@@ -305,7 +302,7 @@ public class BookStoreController {
             }
         }
         logger.info("Request {} handled", requestID);
-        return CollectionModel.of(entModelList, linkTo(methodOn(BookStoreController.class).getAllBooksFromBookStores(null)).withSelfRel());
+        return CollectionModel.of(entModelList, linkTo(methodOn(BookStoreController.class).getAllBooksFromBookStores(null, null)).withSelfRel());
     }
 
     /**
@@ -341,19 +338,19 @@ public class BookStoreController {
      */
     @RateLimiter(name = "DDoS-stopper")
     @DeleteMapping("/bookstores/{storeID}")
-    protected ResponseEntity<EntityModel<BookStore>> deleteBookStore(@PathVariable Long storeID) throws Exception{
-        String requestID = String.valueOf(UUID.randomUUID());
-        logger.info("Request {} received", requestID);
+    protected ResponseEntity<EntityModel<BookStore>> deleteBookStore(@PathVariable Long storeID, HttpServletRequest request) throws Exception{
+        String requestID = request.getAttribute("requestID").toString();
         try{
             storeRepository.findById(storeID).orElseThrow(() -> new BookStoreNotFoundException(storeID));
             storeRepository.deleteById(storeID);
             this.map.remove(storeID);
             this.id = null;
-            utilities.createConnection(hubUrl + "/" + storeID, null, this.url, this.id, "DELETE");
+            HttpResponse<String> response = utilities.createConnection(hubUrl + "/" + storeID, null, this.url, this.id, "DELETE");
             List<Book> books = bookRepository.findByStoreID(storeID);
             for (Book book : books) {
                 bookRepository.delete(book);
             }
+            requestID = response.request().headers().firstValue("requestID").get();
             logger.info("{} has been permanently deleted", storeID);
             logger.info("Request {} handled", requestID);
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();

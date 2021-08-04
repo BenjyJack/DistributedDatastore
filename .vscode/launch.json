@@ -9,7 +9,7 @@
             "name": "Launch Current File",
             "request": "launch",
             "mainClass": "${file}",
-            "env": {"ADDRESS":"http://4c26b06ba1ea.ngrok.io"}
+            "env": {"ADDRESS":"http://d0940de4168f.ngrok.io"}
         },
         {
             "type": "java",
@@ -17,7 +17,7 @@
             "request": "launch",
             "mainClass": "com.ds.datastore.DatastoreApplication",
             "projectName": "datastore",
-            "env": {"ADDRESS":"http://4c26b06ba1ea.ngrok.io",
+            "env": {"ADDRESS":"http://d0940de4168f.ngrok.io",
             "HUB":"http://108.35.72.227:8080/hub",
             "PORT": "8081"}
         },
