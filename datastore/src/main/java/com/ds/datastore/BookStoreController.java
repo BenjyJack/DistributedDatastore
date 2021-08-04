@@ -199,7 +199,7 @@ public class BookStoreController {
                 UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(this.map.get(storeID));
                 URI uri = new URI(builder.toUriString());
                 logger.info("Redirecting request {}", requestID);
-                return ResponseEntity.status(HttpStatus.PERMANENT_REDIRECT).location(uri).build();
+                return ResponseEntity.status(HttpStatus.PERMANENT_REDIRECT).header("requestID", requestID).location(uri).build();
             }else{
                 logger.warn("Bookstore not found", e);
                 throw e;
