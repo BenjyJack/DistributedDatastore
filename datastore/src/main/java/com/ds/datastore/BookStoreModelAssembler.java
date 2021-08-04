@@ -14,7 +14,7 @@ public class BookStoreModelAssembler implements RepresentationModelAssembler<Boo
     public EntityModel<BookStore> toModel(BookStore bookStore) {
         try {
             return EntityModel.of(bookStore,
-                    linkTo(methodOn(BookStoreController.class).one(bookStore.getServerId())).withSelfRel(),
+                    linkTo(methodOn(BookStoreController.class).one(bookStore.getServerId(), null)).withSelfRel(),
                     linkTo(methodOn(BookStoreController.class).getBookStores(null)).withRel("bookstores"));
         } catch (Exception e) {
             return null;

@@ -185,9 +185,8 @@ public class BookStoreController {
      */
     @RateLimiter(name = "DDoS-stopper")
     @GetMapping("/bookstores/{storeID}")
-    protected ResponseEntity<EntityModel<BookStore>> one(@PathVariable Long storeID) throws Exception {
-        String requestID = String.valueOf(UUID.randomUUID());
-        logger.info("Request {} received", requestID);
+    protected ResponseEntity<EntityModel<BookStore>> one(@PathVariable Long storeID, HttpServletRequest request) throws Exception {
+        String requestID = request.getAttribute("requestID").toString();
         try{
             BookStore bookStore = storeRepository.findByServerId(storeID).orElseThrow(() -> new BookStoreNotFoundException(storeID));
             EntityModel<BookStore> entityModel = bookStoreModelAssembler.toModel(bookStore);
