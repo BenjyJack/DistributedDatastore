@@ -17,3 +17,5 @@ Now you can connect to any server on the network using CRUD commands from any se
 
 Thank you for checking out our work!
 Team Black
+
+Demo video: https://youtu.be/FikuS-oBS7I
